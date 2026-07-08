@@ -15,7 +15,7 @@ app.use(express.static(__dirname));
 // ---------- تنظیمات بازی ----------
 const WORLD_SIZE = 4000;
 const TICK_RATE = 20; // شبیه‌سازی فیزیک، بالا بمونه برای دقت
-const BROADCAST_RATE = 12; // ارسال به کلاینت‌ها، پایین‌تر برای کاهش حجم شبکه
+const BROADCAST_RATE = 10; // ارسال به کلاینت‌ها، پایین‌تر برای کاهش حجم شبکه (با prediction سمت کلاینت جبران میشه)
 const SPEED = 160; // پیکسل بر ثانیه
 const TURN_RATE = 4.5; // رادیان بر ثانیه، محدودیت چرخش سر مار
 const SEGMENT_SPACING = 16; // فاصله بین حلقه‌های بدن
@@ -154,6 +154,19 @@ function angleDiff(a, b) {
   return d;
 }
 
+// برای کاهش حجم داده: به‌جای فرستادن همه‌ی حلقه‌های بدن، هر حلقه‌ی دوم رو می‌فرستیم.
+// کلاینت با رسم یه خط پیوسته (نه دایره جدا) این کاهش رزولوشن رو کاملاً نامحسوس می‌کنه.
+function thinSegments(segs) {
+  if (segs.length <= 2) return segs.map((s) => [Math.round(s.x), Math.round(s.y)]);
+  const out = [];
+  for (let i = 0; i < segs.length; i += 2) out.push([Math.round(segs[i].x), Math.round(segs[i].y)]);
+  const last = segs[segs.length - 1];
+  const lx = Math.round(last.x), ly = Math.round(last.y);
+  const lo = out[out.length - 1];
+  if (lo[0] !== lx || lo[1] !== ly) out.push([lx, ly]);
+  return out;
+}
+
 let lastTick = Date.now();
 let tickCounter = 0;
 const BROADCAST_EVERY_N_TICKS = Math.max(1, Math.round(TICK_RATE / BROADCAST_RATE));
@@ -262,7 +275,8 @@ setInterval(() => {
         name: p.name,
         alive: p.alive,
         ready: p.ready,
-        segments: p.segments.map((s) => [Math.round(s.x), Math.round(s.y)]),
+        angle: p.angle,
+        segments: thinSegments(p.segments),
       })),
     });
   }
@@ -295,11 +309,19 @@ if (BOT_TOKEN) {
     sendGameButton(msg.chat.id);
   });
 
-  // واکنش به پیام متنی "مار بازی" در گروه یا خصوصی
+  // واکنش به پیام متنی "مار بازی" در گروه یا خصوصی — حتی با فاصله‌های نامرئی یا نویسه‌های عربی/فارسی متفاوت
+  function normalizeText(t) {
+    return t
+      .replace(/[\u200c\u200f\u200e\u00a0]/g, " ")
+      .replace(/ي/g, "ی")
+      .replace(/ك/g, "ک")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
   bot.on("message", (msg) => {
     if (!msg.text) return;
-    const text = msg.text.trim();
-    if (text === "مار بازی" || text === "بازی مار") {
+    const text = normalizeText(msg.text);
+    if (text.includes("مار بازی") || text.includes("بازی مار")) {
       sendGameButton(msg.chat.id);
     }
   });
