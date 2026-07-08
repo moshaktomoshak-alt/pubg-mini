@@ -12,10 +12,9 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const socket = io();
 let myId = null;
-let worldSize = 2000;
+let worldSize = 3000;
 let latestState = null;
 
-// ---------- ورود با اسم ----------
 const nameOverlay = document.getElementById("nameOverlay");
 const nameInput = document.getElementById("nameInput");
 const joinBtn = document.getElementById("joinBtn");
@@ -41,9 +40,7 @@ socket.on("joinRejected", (data) => {
 });
 
 const statusEl = document.getElementById("status");
-socket.on("gameStarted", () => {
-  statusEl.style.display = "none";
-});
+socket.on("gameStarted", () => { statusEl.style.display = "none"; });
 socket.on("gameOver", (data) => {
   statusEl.style.display = "block";
   statusEl.innerText = data.winnerId
@@ -64,20 +61,19 @@ socket.on("state", (state) => {
     statusEl.style.display = "none";
   }
   const me = state.players.find((p) => p.id === myId);
-  if (me) {
-    document.getElementById("hpFill").style.width = Math.max(0, me.hp) + "%";
-  }
+  document.getElementById("lengthInfo").innerText = me ? "🐍 " + me.segments.length : "";
   document.getElementById("aliveCount").innerText =
     "🟢 " + state.players.filter((p) => p.alive).length + " زنده";
 });
 
-// ---------- کنترل جوی‌استیک ----------
+// ---------- جوی‌استیک ----------
 const joyBase = document.getElementById("joyBase");
 const joyStick = document.getElementById("joyStick");
 let joyActive = false;
 let joyTouchId = null;
 let joyCenter = { x: 0, y: 0 };
-let currentDx = 0, currentDy = 0, currentAngle = 0;
+let currentAngle = 0;
+let hasAngle = false;
 
 function joyStart(x, y, id) {
   joyActive = true;
@@ -93,17 +89,15 @@ function joyMove(x, y) {
   const dist = Math.hypot(dx, dy);
   if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
   joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
-  currentDx = dx / maxDist;
-  currentDy = dy / maxDist;
-  if (Math.hypot(currentDx, currentDy) > 0.15) {
-    currentAngle = Math.atan2(currentDy, currentDx);
+  if (Math.hypot(dx, dy) > 8) {
+    currentAngle = Math.atan2(dy, dx);
+    hasAngle = true;
   }
 }
 function joyEnd() {
   joyActive = false;
   joyTouchId = null;
   joyStick.style.transform = "translate(0,0)";
-  currentDx = 0; currentDy = 0;
 }
 
 joyBase.addEventListener("touchstart", (e) => {
@@ -121,90 +115,76 @@ window.addEventListener("touchend", (e) => {
     if (t.identifier === joyTouchId) joyEnd();
   }
 });
-
-// mouse fallback (برای تست دسکتاپ)
 joyBase.addEventListener("mousedown", (e) => { joyStart(e.clientX, e.clientY, "mouse"); joyMove(e.clientX, e.clientY); });
 window.addEventListener("mousemove", (e) => { if (joyTouchId === "mouse") joyMove(e.clientX, e.clientY); });
 window.addEventListener("mouseup", () => { if (joyTouchId === "mouse") joyEnd(); });
 
 setInterval(() => {
-  if (myId) socket.emit("input", { dx: currentDx, dy: currentDy, angle: currentAngle });
+  if (myId && hasAngle) socket.emit("input", { angle: currentAngle });
 }, 50);
 
-// ---------- شلیک ----------
-document.getElementById("shootBtn").addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  socket.emit("shoot");
-});
-document.getElementById("shootBtn").addEventListener("click", () => {
-  socket.emit("shoot");
-});
-
 // ---------- رندر ----------
+function drawSnake(segs, color, isMe) {
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const s = segs[i];
+    ctx.beginPath();
+    ctx.fillStyle = i === 0 ? (isMe ? "#8bffb0" : "#ffb0b0") : color;
+    const r = i === 0 ? 11 : 9;
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function draw() {
   requestAnimationFrame(draw);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!latestState) return;
 
-  const me = latestState.players.find((p) => p.id === myId) || { x: worldSize / 2, y: worldSize / 2 };
-  const camX = me.x - canvas.width / 2;
-  const camY = me.y - canvas.height / 2;
+  const me = latestState.players.find((p) => p.id === myId);
+  const headRef = me && me.segments.length ? me.segments[0] : { x: worldSize / 2, y: worldSize / 2 };
+  const camX = headRef.x - canvas.width / 2;
+  const camY = headRef.y - canvas.height / 2;
 
-  // پس‌زمینه گرید
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // گرید پس‌زمینه
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
   const gridSize = 100;
-  for (let x = -((camX) % gridSize); x < canvas.width; x += gridSize) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  const startX = Math.floor(camX / gridSize) * gridSize;
+  const startY = Math.floor(camY / gridSize) * gridSize;
+  for (let x = startX; x < camX + canvas.width; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, camY); ctx.lineTo(x, camY + canvas.height); ctx.stroke();
   }
-  for (let y = -((camY) % gridSize); y < canvas.height; y += gridSize) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  for (let y = startY; y < camY + canvas.height; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(camX, y); ctx.lineTo(camX + canvas.width, y); ctx.stroke();
   }
 
-  // مرزهای دنیا
-  ctx.strokeStyle = "rgba(255,80,80,0.4)";
+  // دیوار دنیا
+  ctx.strokeStyle = "rgba(255,80,80,0.5)";
   ctx.lineWidth = 4;
-  ctx.strokeRect(-camX, -camY, worldSize, worldSize);
+  ctx.strokeRect(0, 0, worldSize, worldSize);
 
-  // زون امن
-  const z = latestState.zone;
-  ctx.strokeStyle = "rgba(80,180,255,0.8)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(z.x - camX, z.y - camY, z.radius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // گلوله‌ها
-  ctx.fillStyle = "#ffe066";
-  for (const b of latestState.bullets) {
+  // غذا
+  ctx.fillStyle = "#ffd93d";
+  for (const f of latestState.food) {
     ctx.beginPath();
-    ctx.arc(b.x - camX, b.y - camY, 5, 0, Math.PI * 2);
+    ctx.arc(f.x, f.y, 6, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // بازیکن‌ها
+  // مارها
   for (const p of latestState.players) {
     if (!p.alive) continue;
-    const x = p.x - camX, y = p.y - camY;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(p.angle);
-    ctx.fillStyle = p.id === myId ? "#4caf50" : "#e05656";
-    ctx.beginPath();
-    ctx.arc(0, 0, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(14, -3, 14, 6); // اسلحه
-    ctx.restore();
-
+    const isMe = p.id === myId;
+    drawSnake(p.segments, isMe ? "#4caf50" : "#c0455c", isMe);
+    const head = p.segments[0];
     ctx.fillStyle = "#fff";
     ctx.font = "12px Tahoma";
     ctx.textAlign = "center";
-    ctx.fillText(p.name, x, y - 28);
-
-    ctx.fillStyle = "#333";
-    ctx.fillRect(x - 20, y - 24, 40, 5);
-    ctx.fillStyle = "#4caf50";
-    ctx.fillRect(x - 20, y - 24, 40 * Math.max(0, p.hp) / 100, 5);
+    ctx.fillText(p.name, head.x, head.y - 22);
   }
+
+  ctx.restore();
 }
 draw();
