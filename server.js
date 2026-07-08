@@ -4,23 +4,29 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  pingTimeout: 30000, // تحمل بیشتر برای قطعی‌های کوتاه نت موبایل/VPN
+  pingInterval: 15000,
+  perMessageDeflate: true, // فشرده‌سازی پیام‌ها برای حجم کمتر رو نت ضعیف
+});
 
 app.use(express.static(__dirname));
 
 // ---------- تنظیمات بازی ----------
-const WORLD_SIZE = 3000;
-const TICK_RATE = 20;
+const WORLD_SIZE = 4000;
+const TICK_RATE = 20; // شبیه‌سازی فیزیک، بالا بمونه برای دقت
+const BROADCAST_RATE = 12; // ارسال به کلاینت‌ها، پایین‌تر برای کاهش حجم شبکه
 const SPEED = 160; // پیکسل بر ثانیه
 const TURN_RATE = 4.5; // رادیان بر ثانیه، محدودیت چرخش سر مار
-const SEGMENT_SPACING = 12; // فاصله بین حلقه‌های بدن
+const SEGMENT_SPACING = 16; // فاصله بین حلقه‌های بدن
 const START_SEGMENTS = 8;
 const HEAD_RADIUS = 10;
 const BODY_RADIUS = 9;
 const GROW_PER_FOOD = 4;
-const FOOD_COUNT = 120;
+const MAX_SEGMENTS = 200; // سقف طول برای جلوگیری از سنگین شدن بازی
+const FOOD_COUNT = 180;
 const FOOD_RADIUS = 6;
-const MAX_PLAYERS = 10;
+const MAX_PLAYERS = 15;
 const SELF_COLLISION_SKIP = 6; // چند حلقه‌ی اول نزدیک سر رو نادیده بگیر تا خودش رو نکشه فوری
 
 function freshGameState() {
@@ -54,8 +60,10 @@ function alivePlayers() {
 }
 
 function tryStartGame() {
-  const count = Object.keys(game.players).length;
-  if (game.status === "waiting" && count >= 2) {
+  const players = Object.values(game.players);
+  const count = players.length;
+  const allReady = count > 0 && players.every((p) => p.ready);
+  if (game.status === "waiting" && count >= 2 && allReady) {
     game.status = "running";
     io.emit("gameStarted");
   }
@@ -97,6 +105,7 @@ function makeSnake(id, name) {
     targetAngle: angle,
     segments,
     growth: 0, // چند حلقه هنوز باید اضافه بشه
+    ready: false,
   };
 }
 
@@ -124,9 +133,17 @@ io.on("connection", (socket) => {
     if (typeof data.angle === "number") p.targetAngle = data.angle;
   });
 
+  socket.on("ready", () => {
+    const p = game.players[socket.id];
+    if (!p || game.status !== "waiting") return;
+    p.ready = true;
+    tryStartGame();
+  });
+
   socket.on("disconnect", () => {
     delete game.players[socket.id];
     endGameIfNeeded();
+    tryStartGame();
   });
 });
 
@@ -138,10 +155,14 @@ function angleDiff(a, b) {
 }
 
 let lastTick = Date.now();
+let tickCounter = 0;
+const BROADCAST_EVERY_N_TICKS = Math.max(1, Math.round(TICK_RATE / BROADCAST_RATE));
+
 setInterval(() => {
   const now = Date.now();
   const dt = (now - lastTick) / 1000;
   lastTick = now;
+  tickCounter++;
 
   if (game.status === "running") {
     const snakes = Object.values(game.players).filter((p) => p.alive);
@@ -184,46 +205,67 @@ setInterval(() => {
         const dist = Math.hypot(f.x - newHead.x, f.y - newHead.y);
         if (dist < HEAD_RADIUS + FOOD_RADIUS) {
           game.food.splice(i, 1);
-          p.growth += GROW_PER_FOOD;
+          if (p.segments.length + p.growth < MAX_SEGMENTS) {
+            p.growth += GROW_PER_FOOD;
+          }
         }
       }
     }
     ensureFood();
 
-    // برخورد سر با بدن (خودش یا دیگران)
+    // برخورد سر با بدن (خودش یا دیگران) — با گرید مکانی برای سرعت بیشتر
+    const CELL = (HEAD_RADIUS + BODY_RADIUS) * 3;
+    const grid = new Map();
+    function cellKey(x, y) {
+      return Math.floor(x / CELL) + "_" + Math.floor(y / CELL);
+    }
+    for (const other of snakes) {
+      const segs = other.segments;
+      for (let i = 0; i < segs.length; i++) {
+        const s = segs[i];
+        const key = cellKey(s.x, s.y);
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push({ ownerId: other.id, idx: i, x: s.x, y: s.y });
+      }
+    }
     for (const p of snakes) {
       if (!p.alive) continue;
       const head = p.segments[0];
-      for (const other of snakes) {
-        const segs = other.segments;
-        const startIdx = other.id === p.id ? SELF_COLLISION_SKIP : 0;
-        for (let i = startIdx; i < segs.length; i++) {
-          const s = segs[i];
-          const dist = Math.hypot(s.x - head.x, s.y - head.y);
-          if (dist < HEAD_RADIUS + BODY_RADIUS - 2) {
-            p.alive = false;
-            io.emit("playerDown", { id: p.id, name: p.name });
-            break;
+      const cx = Math.floor(head.x / CELL);
+      const cy = Math.floor(head.y / CELL);
+      outer: for (let gx = cx - 1; gx <= cx + 1; gx++) {
+        for (let gy = cy - 1; gy <= cy + 1; gy++) {
+          const bucket = grid.get(gx + "_" + gy);
+          if (!bucket) continue;
+          for (const item of bucket) {
+            if (item.ownerId === p.id && item.idx < SELF_COLLISION_SKIP) continue;
+            const dist = Math.hypot(item.x - head.x, item.y - head.y);
+            if (dist < HEAD_RADIUS + BODY_RADIUS - 2) {
+              p.alive = false;
+              io.emit("playerDown", { id: p.id, name: p.name });
+              break outer;
+            }
           }
         }
-        if (!p.alive) break;
       }
     }
 
     endGameIfNeeded();
   }
 
-  io.emit("state", {
-    status: game.status,
-    food: game.food,
-    players: Object.values(game.players).map((p) => ({
-      id: p.id,
-      name: p.name,
-      alive: p.alive,
-      angle: p.angle,
-      segments: p.segments,
-    })),
-  });
+  if (tickCounter % BROADCAST_EVERY_N_TICKS === 0) {
+    io.volatile.emit("state", {
+      status: game.status,
+      food: game.food.map((f) => [Math.round(f.x), Math.round(f.y)]),
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        alive: p.alive,
+        ready: p.ready,
+        segments: p.segments.map((s) => [Math.round(s.x), Math.round(s.y)]),
+      })),
+    });
+  }
 }, 1000 / TICK_RATE);
 
 const PORT = process.env.PORT || 3000;
@@ -238,8 +280,8 @@ const WEBAPP_URL = process.env.WEBAPP_URL;
 
 if (BOT_TOKEN) {
   const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-  bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
+
+  function sendGameButton(chatId) {
     bot.sendMessage(chatId, "برای بازی رو دکمه زیر بزن 👇", {
       reply_markup: {
         inline_keyboard: [
@@ -247,7 +289,21 @@ if (BOT_TOKEN) {
         ],
       },
     });
+  }
+
+  bot.onText(/\/start/, (msg) => {
+    sendGameButton(msg.chat.id);
   });
+
+  // واکنش به پیام متنی "مار بازی" در گروه یا خصوصی
+  bot.on("message", (msg) => {
+    if (!msg.text) return;
+    const text = msg.text.trim();
+    if (text === "مار بازی" || text === "بازی مار") {
+      sendGameButton(msg.chat.id);
+    }
+  });
+
   console.log("Telegram bot polling started");
 } else {
   console.log("BOT_TOKEN not set — bot disabled, only game server is running");
