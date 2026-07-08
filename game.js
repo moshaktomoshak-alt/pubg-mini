@@ -20,6 +20,10 @@ const socket = io({
 let myId = null;
 let worldSize = 4000;
 
+// این مقادیر باید دقیقاً با سرور یکی باشن تا پیش‌بینی محلی درست کار کنه
+const SPEED = 160;
+const TURN_RATE = 4.5;
+
 const nameOverlay = document.getElementById("nameOverlay");
 const nameInput = document.getElementById("nameInput");
 const joinBtn = document.getElementById("joinBtn");
@@ -49,6 +53,7 @@ readyBtn.addEventListener("click", () => {
 socket.on("joined", (data) => {
   myId = data.id;
   worldSize = data.worldSize;
+  predicted = null;
 });
 
 socket.on("joinRejected", (data) => {
@@ -71,18 +76,28 @@ socket.on("gameReset", () => {
   statusEl.style.display = "none";
   readyOverlay.style.display = "none";
   imReady = false;
+  predicted = null;
   nameOverlay.style.display = "flex";
 });
 
 let prevState = null;
-let prevStateTime = 0;
 let curState = null;
 let curStateTime = 0;
-const STATE_INTERVAL = 83; // باید با فاصله ارسال سرور (BROADCAST_RATE=12) یکی باشه
+const STATE_INTERVAL = 100; // باید با فاصله ارسال سرور (BROADCAST_RATE=10) یکی باشه
+
+// ---------- پیش‌بینی سمت کلاینت برای مار خودم ----------
+let predicted = null; // {x,y,angle}
+let lastPredictTime = null;
+
+function angleDiff(a, b) {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
 
 socket.on("state", (state) => {
   prevState = curState;
-  prevStateTime = curStateTime;
   curState = state;
   curStateTime = performance.now();
 
@@ -98,13 +113,26 @@ socket.on("state", (state) => {
   document.getElementById("lengthInfo").innerText = me ? "🐍 " + me.segments.length : "";
   document.getElementById("aliveCount").innerText =
     "🟢 " + state.players.filter((p) => p.alive).length + " زنده";
+
+  if (me && me.alive && me.segments.length) {
+    const serverHead = { x: me.segments[0][0], y: me.segments[0][1] };
+    if (!predicted) {
+      predicted = { x: serverHead.x, y: serverHead.y, angle: me.angle };
+    } else {
+      const CORRECTION = 0.25;
+      predicted.x += (serverHead.x - predicted.x) * CORRECTION;
+      predicted.y += (serverHead.y - predicted.y) * CORRECTION;
+      predicted.angle += angleDiff(predicted.angle, me.angle) * CORRECTION;
+    }
+  } else if (!me || !me.alive) {
+    predicted = null;
+  }
 });
 
 function getInterpolatedPlayers() {
   if (!curState) return [];
   if (!prevState) return curState.players;
   const t = Math.min(1, (performance.now() - curStateTime) / STATE_INTERVAL + 1);
-  // نسبت بین دو اسنپ‌شات آخر برای حرکت نرم
   const factor = Math.min(1, Math.max(0, t));
   return curState.players.map((p) => {
     const old = prevState.players.find((op) => op.id === p.id);
@@ -178,32 +206,60 @@ setInterval(() => {
 }, 50);
 
 // ---------- رندر ----------
-function drawSnake(segs, color, isMe) {
-  for (let i = segs.length - 1; i >= 0; i--) {
-    const s = segs[i];
+function drawSnake(segs, color, headColor) {
+  if (segs.length >= 2) {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 18;
     ctx.beginPath();
-    ctx.fillStyle = i === 0 ? (isMe ? "#8bffb0" : "#ffb0b0") : color;
-    const r = i === 0 ? 11 : 9;
-    ctx.arc(s[0], s[1], r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(segs[0][0], segs[0][1]);
+    for (let i = 1; i < segs.length; i++) ctx.lineTo(segs[i][0], segs[i][1]);
+    ctx.stroke();
   }
+  ctx.beginPath();
+  ctx.fillStyle = headColor;
+  ctx.arc(segs[0][0], segs[0][1], 11, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function draw() {
   requestAnimationFrame(draw);
+  const now = performance.now();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!curState) return;
 
   const players = getInterpolatedPlayers();
   const me = players.find((p) => p.id === myId);
-  const headRef = me && me.segments.length ? { x: me.segments[0][0], y: me.segments[0][1] } : { x: worldSize / 2, y: worldSize / 2 };
-  const camX = headRef.x - canvas.width / 2;
-  const camY = headRef.y - canvas.height / 2;
+
+  if (lastPredictTime === null) lastPredictTime = now;
+  const dt = Math.min(0.1, (now - lastPredictTime) / 1000);
+  lastPredictTime = now;
+  if (predicted && curState.status === "running") {
+    const target = hasAngle ? currentAngle : predicted.angle;
+    const diff = angleDiff(predicted.angle, target);
+    const maxTurn = TURN_RATE * dt;
+    if (Math.abs(diff) <= maxTurn) predicted.angle = target;
+    else predicted.angle += Math.sign(diff) * maxTurn;
+    predicted.x += Math.cos(predicted.angle) * SPEED * dt;
+    predicted.y += Math.sin(predicted.angle) * SPEED * dt;
+  }
+
+  let camX, camY, offsetX = 0, offsetY = 0;
+  if (predicted && me && me.segments.length) {
+    camX = predicted.x - canvas.width / 2;
+    camY = predicted.y - canvas.height / 2;
+    offsetX = predicted.x - me.segments[0][0];
+    offsetY = predicted.y - me.segments[0][1];
+  } else {
+    const headRef = me && me.segments.length ? { x: me.segments[0][0], y: me.segments[0][1] } : { x: worldSize / 2, y: worldSize / 2 };
+    camX = headRef.x - canvas.width / 2;
+    camY = headRef.y - canvas.height / 2;
+  }
 
   ctx.save();
   ctx.translate(-camX, -camY);
 
-  // گرید پس‌زمینه
   ctx.strokeStyle = "rgba(255,255,255,0.04)";
   const gridSize = 100;
   const startX = Math.floor(camX / gridSize) * gridSize;
@@ -215,12 +271,10 @@ function draw() {
     ctx.beginPath(); ctx.moveTo(camX, y); ctx.lineTo(camX + canvas.width, y); ctx.stroke();
   }
 
-  // دیوار دنیا
   ctx.strokeStyle = "rgba(255,80,80,0.5)";
   ctx.lineWidth = 4;
   ctx.strokeRect(0, 0, worldSize, worldSize);
 
-  // غذا
   ctx.fillStyle = "#ffd93d";
   for (const f of curState.food) {
     ctx.beginPath();
@@ -228,12 +282,14 @@ function draw() {
     ctx.fill();
   }
 
-  // مارها
   for (const p of players) {
     if (!p.alive) continue;
     const isMe = p.id === myId;
-    drawSnake(p.segments, isMe ? "#4caf50" : "#c0455c", isMe);
-    const head = p.segments[0];
+    const segs = isMe && (offsetX || offsetY)
+      ? p.segments.map(([x, y]) => [x + offsetX, y + offsetY])
+      : p.segments;
+    drawSnake(segs, isMe ? "#4caf50" : "#c0455c", isMe ? "#8bffb0" : "#ffb0b0");
+    const head = segs[0];
     ctx.fillStyle = "#fff";
     ctx.font = "12px Tahoma";
     ctx.textAlign = "center";
