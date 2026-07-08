@@ -1,6 +1,5 @@
 const express = require("express");
 const http = require("http");
-const path = require("path");
 const { Server } = require("socket.io");
 
 const app = express();
@@ -10,57 +9,45 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 
 // ---------- تنظیمات بازی ----------
-const WORLD_SIZE = 2000;
-const TICK_RATE = 20; // فریم بر ثانیه شبیه‌سازی سرور
-const PLAYER_SPEED = 220; // پیکسل بر ثانیه
-const PLAYER_RADIUS = 18;
-const BULLET_SPEED = 700;
-const BULLET_RADIUS = 5;
-const BULLET_DAMAGE = 12;
-const FIRE_COOLDOWN_MS = 300;
+const WORLD_SIZE = 3000;
+const TICK_RATE = 20;
+const SPEED = 160; // پیکسل بر ثانیه
+const TURN_RATE = 4.5; // رادیان بر ثانیه، محدودیت چرخش سر مار
+const SEGMENT_SPACING = 12; // فاصله بین حلقه‌های بدن
+const START_SEGMENTS = 8;
+const HEAD_RADIUS = 10;
+const BODY_RADIUS = 9;
+const GROW_PER_FOOD = 4;
+const FOOD_COUNT = 120;
+const FOOD_RADIUS = 6;
 const MAX_PLAYERS = 10;
+const SELF_COLLISION_SKIP = 6; // چند حلقه‌ی اول نزدیک سر رو نادیده بگیر تا خودش رو نکشه فوری
 
-// زون: دایره‌ای که با زمان کوچیک میشه، بیرونش دیمیج میده
-const ZONE_SHRINK_START_MS = 15000; // 15 ثانیه بعد شروع شدن بازی شروع به کوچیک شدن میکنه
-const ZONE_SHRINK_DURATION_MS = 90000; // طی 90 ثانیه به کمترین سایز میرسه
-const ZONE_MIN_RADIUS = 150;
-const ZONE_DAMAGE_PER_SEC = 8;
-
-// ---------- وضعیت بازی (یک روم ساده برای MVP) ----------
 function freshGameState() {
   return {
-    players: {}, // id -> {x,y,hp,angle,name,alive,lastShot}
-    bullets: [], // {id,x,y,vx,vy,ownerId}
-    status: "waiting", // waiting | running | ended
-    startedAt: null,
+    players: {}, // id -> {id,name,alive,segments:[{x,y}],angle,targetAngle,length}
+    food: [],
+    status: "waiting",
     winnerId: null,
-    bulletSeq: 0,
   };
 }
-
 let game = freshGameState();
 
-function randomSpawn() {
-  const margin = 150;
+function randomPoint(margin = 100) {
   return {
     x: margin + Math.random() * (WORLD_SIZE - margin * 2),
     y: margin + Math.random() * (WORLD_SIZE - margin * 2),
   };
 }
 
-function currentZone() {
-  if (!game.startedAt) {
-    return { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: WORLD_SIZE / 2 };
-  }
-  const elapsed = Date.now() - game.startedAt;
-  const t = Math.min(
-    Math.max((elapsed - ZONE_SHRINK_START_MS) / ZONE_SHRINK_DURATION_MS, 0),
-    1
-  );
-  const maxRadius = WORLD_SIZE / 2;
-  const radius = maxRadius - t * (maxRadius - ZONE_MIN_RADIUS);
-  return { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius };
+function spawnFood() {
+  const p = randomPoint(50);
+  game.food.push({ x: p.x, y: p.y, id: Math.random().toString(36).slice(2) });
 }
+function ensureFood() {
+  while (game.food.length < FOOD_COUNT) spawnFood();
+}
+ensureFood();
 
 function alivePlayers() {
   return Object.values(game.players).filter((p) => p.alive);
@@ -70,7 +57,6 @@ function tryStartGame() {
   const count = Object.keys(game.players).length;
   if (game.status === "waiting" && count >= 2) {
     game.status = "running";
-    game.startedAt = Date.now();
     io.emit("gameStarted");
   }
 }
@@ -85,12 +71,33 @@ function endGameIfNeeded() {
       winnerId: game.winnerId,
       winnerName: alive.length === 1 ? alive[0].name : null,
     });
-    // ریست بعد از چند ثانیه برای بازی بعدی
     setTimeout(() => {
       game = freshGameState();
+      ensureFood();
       io.emit("gameReset");
     }, 8000);
   }
+}
+
+function makeSnake(id, name) {
+  const start = randomPoint(300);
+  const angle = Math.random() * Math.PI * 2;
+  const segments = [];
+  for (let i = 0; i < START_SEGMENTS; i++) {
+    segments.push({
+      x: start.x - Math.cos(angle) * i * SEGMENT_SPACING,
+      y: start.y - Math.sin(angle) * i * SEGMENT_SPACING,
+    });
+  }
+  return {
+    id,
+    name,
+    alive: true,
+    angle,
+    targetAngle: angle,
+    segments,
+    growth: 0, // چند حلقه هنوز باید اضافه بشه
+  };
 }
 
 io.on("connection", (socket) => {
@@ -106,19 +113,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const spawn = randomSpawn();
-    game.players[socket.id] = {
-      id: socket.id,
-      name,
-      x: spawn.x,
-      y: spawn.y,
-      angle: 0,
-      hp: 100,
-      alive: true,
-      input: { dx: 0, dy: 0 },
-      lastShot: 0,
-    };
-
+    game.players[socket.id] = makeSnake(socket.id, name);
     socket.emit("joined", { id: socket.id, worldSize: WORLD_SIZE });
     tryStartGame();
   });
@@ -126,34 +121,7 @@ io.on("connection", (socket) => {
   socket.on("input", (data) => {
     const p = game.players[socket.id];
     if (!p || !p.alive) return;
-    let dx = Number(data && data.dx) || 0;
-    let dy = Number(data && data.dy) || 0;
-    const len = Math.hypot(dx, dy);
-    if (len > 1) {
-      dx /= len;
-      dy /= len;
-    }
-    p.input = { dx, dy };
-    if (typeof data.angle === "number") p.angle = data.angle;
-  });
-
-  socket.on("shoot", () => {
-    const p = game.players[socket.id];
-    if (!p || !p.alive || game.status !== "running") return;
-    const now = Date.now();
-    if (now - p.lastShot < FIRE_COOLDOWN_MS) return;
-    p.lastShot = now;
-
-    const bullet = {
-      id: game.bulletSeq++,
-      x: p.x + Math.cos(p.angle) * (PLAYER_RADIUS + 4),
-      y: p.y + Math.sin(p.angle) * (PLAYER_RADIUS + 4),
-      vx: Math.cos(p.angle) * BULLET_SPEED,
-      vy: Math.sin(p.angle) * BULLET_SPEED,
-      ownerId: socket.id,
-      bornAt: now,
-    };
-    game.bullets.push(bullet);
+    if (typeof data.angle === "number") p.targetAngle = data.angle;
   });
 
   socket.on("disconnect", () => {
@@ -162,7 +130,13 @@ io.on("connection", (socket) => {
   });
 });
 
-// ---------- حلقه اصلی شبیه‌سازی ----------
+function angleDiff(a, b) {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
 let lastTick = Date.now();
 setInterval(() => {
   const now = Date.now();
@@ -170,77 +144,85 @@ setInterval(() => {
   lastTick = now;
 
   if (game.status === "running") {
-    // حرکت بازیکن‌ها
-    for (const p of Object.values(game.players)) {
-      if (!p.alive) continue;
-      p.x += p.input.dx * PLAYER_SPEED * dt;
-      p.y += p.input.dy * PLAYER_SPEED * dt;
-      p.x = Math.max(PLAYER_RADIUS, Math.min(WORLD_SIZE - PLAYER_RADIUS, p.x));
-      p.y = Math.max(PLAYER_RADIUS, Math.min(WORLD_SIZE - PLAYER_RADIUS, p.y));
+    const snakes = Object.values(game.players).filter((p) => p.alive);
+
+    // چرخش و حرکت سر
+    for (const p of snakes) {
+      const diff = angleDiff(p.angle, p.targetAngle);
+      const maxTurn = TURN_RATE * dt;
+      if (Math.abs(diff) <= maxTurn) p.angle = p.targetAngle;
+      else p.angle += Math.sign(diff) * maxTurn;
+
+      const head = p.segments[0];
+      const newHead = {
+        x: head.x + Math.cos(p.angle) * SPEED * dt,
+        y: head.y + Math.sin(p.angle) * SPEED * dt,
+      };
+
+      // برخورد با دیوار
+      if (
+        newHead.x < 0 || newHead.y < 0 ||
+        newHead.x > WORLD_SIZE || newHead.y > WORLD_SIZE
+      ) {
+        p.alive = false;
+        io.emit("playerDown", { id: p.id, name: p.name });
+        continue;
+      }
+
+      p.segments.unshift(newHead);
+
+      // رشد یا کوتاه‌شدن دم بر اساس growth
+      if (p.growth > 0) {
+        p.growth -= 1;
+      } else {
+        p.segments.pop();
+      }
+
+      // خوردن غذا
+      for (let i = game.food.length - 1; i >= 0; i--) {
+        const f = game.food[i];
+        const dist = Math.hypot(f.x - newHead.x, f.y - newHead.y);
+        if (dist < HEAD_RADIUS + FOOD_RADIUS) {
+          game.food.splice(i, 1);
+          p.growth += GROW_PER_FOOD;
+        }
+      }
     }
+    ensureFood();
 
-    // حرکت گلوله‌ها + برخورد
-    const zone = currentZone();
-    const remainingBullets = [];
-    for (const b of game.bullets) {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-
-      let hit = false;
-      if (b.x < 0 || b.y < 0 || b.x > WORLD_SIZE || b.y > WORLD_SIZE) hit = true;
-      if (now - b.bornAt > 3000) hit = true;
-
-      if (!hit) {
-        for (const p of Object.values(game.players)) {
-          if (!p.alive || p.id === b.ownerId) continue;
-          const dist = Math.hypot(p.x - b.x, p.y - b.y);
-          if (dist < PLAYER_RADIUS + BULLET_RADIUS) {
-            p.hp -= BULLET_DAMAGE;
-            hit = true;
-            if (p.hp <= 0) {
-              p.hp = 0;
-              p.alive = false;
-              io.emit("playerDown", { id: p.id, name: p.name, by: b.ownerId });
-            }
+    // برخورد سر با بدن (خودش یا دیگران)
+    for (const p of snakes) {
+      if (!p.alive) continue;
+      const head = p.segments[0];
+      for (const other of snakes) {
+        const segs = other.segments;
+        const startIdx = other.id === p.id ? SELF_COLLISION_SKIP : 0;
+        for (let i = startIdx; i < segs.length; i++) {
+          const s = segs[i];
+          const dist = Math.hypot(s.x - head.x, s.y - head.y);
+          if (dist < HEAD_RADIUS + BODY_RADIUS - 2) {
+            p.alive = false;
+            io.emit("playerDown", { id: p.id, name: p.name });
             break;
           }
         }
-      }
-      if (!hit) remainingBullets.push(b);
-    }
-    game.bullets = remainingBullets;
-
-    // دیمیج زون
-    for (const p of Object.values(game.players)) {
-      if (!p.alive) continue;
-      const dist = Math.hypot(p.x - zone.x, p.y - zone.y);
-      if (dist > zone.radius) {
-        p.hp -= ZONE_DAMAGE_PER_SEC * dt;
-        if (p.hp <= 0) {
-          p.hp = 0;
-          p.alive = false;
-          io.emit("playerDown", { id: p.id, name: p.name, by: null });
-        }
+        if (!p.alive) break;
       }
     }
 
     endGameIfNeeded();
   }
 
-  // پخش وضعیت به همه
   io.emit("state", {
     status: game.status,
-    zone: currentZone(),
+    food: game.food,
     players: Object.values(game.players).map((p) => ({
       id: p.id,
       name: p.name,
-      x: p.x,
-      y: p.y,
-      angle: p.angle,
-      hp: p.hp,
       alive: p.alive,
+      angle: p.angle,
+      segments: p.segments,
     })),
-    bullets: game.bullets.map((b) => ({ id: b.id, x: b.x, y: b.y })),
   });
 }, 1000 / TICK_RATE);
 
@@ -249,10 +231,10 @@ server.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
 
-// ---------- بات تلگرام (اختیاری، در همین سرویس) ----------
+// ---------- بات تلگرام ----------
 const TelegramBot = require("node-telegram-bot-api");
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL; // آدرس همین اپ روی Railway، مثلا https://xxx.up.railway.app
+const WEBAPP_URL = process.env.WEBAPP_URL;
 
 if (BOT_TOKEN) {
   const bot = new TelegramBot(BOT_TOKEN, { polling: true });
@@ -261,12 +243,7 @@ if (BOT_TOKEN) {
     bot.sendMessage(chatId, "برای بازی رو دکمه زیر بزن 👇", {
       reply_markup: {
         inline_keyboard: [
-          [
-            {
-              text: "🎮 شروع بازی",
-              web_app: { url: WEBAPP_URL },
-            },
-          ],
+          [{ text: "🐍 شروع بازی", web_app: { url: WEBAPP_URL } }],
         ],
       },
     });
