@@ -1,315 +1,42 @@
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+const TelegramBot = require("node-telegram-bot-api");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  pingTimeout: 30000, // تحمل بیشتر برای قطعی‌های کوتاه نت موبایل/VPN
-  pingInterval: 15000,
-  perMessageDeflate: true, // فشرده‌سازی پیام‌ها برای حجم کمتر رو نت ضعیف
-});
-
-app.use(express.static(__dirname));
-
-// ---------- تنظیمات بازی ----------
-const WORLD_SIZE = 4000;
-const TICK_RATE = 20; // شبیه‌سازی فیزیک، بالا بمونه برای دقت
-const BROADCAST_RATE = 10; // ارسال به کلاینت‌ها، پایین‌تر برای کاهش حجم شبکه (با prediction سمت کلاینت جبران میشه)
-const SPEED = 160; // پیکسل بر ثانیه
-const TURN_RATE = 4.5; // رادیان بر ثانیه، محدودیت چرخش سر مار
-const SEGMENT_SPACING = 16; // فاصله بین حلقه‌های بدن
-const START_SEGMENTS = 8;
-const HEAD_RADIUS = 10;
-const BODY_RADIUS = 9;
-const GROW_PER_FOOD = 4;
-const MAX_SEGMENTS = 200; // سقف طول برای جلوگیری از سنگین شدن بازی
-const FOOD_COUNT = 180;
-const FOOD_RADIUS = 6;
-const MAX_PLAYERS = 15;
-const SELF_COLLISION_SKIP = 6; // چند حلقه‌ی اول نزدیک سر رو نادیده بگیر تا خودش رو نکشه فوری
-
-function freshGameState() {
-  return {
-    players: {}, // id -> {id,name,alive,segments:[{x,y}],angle,targetAngle,length}
-    food: [],
-    status: "waiting",
-    winnerId: null,
-  };
-}
-let game = freshGameState();
-
-function randomPoint(margin = 100) {
-  return {
-    x: margin + Math.random() * (WORLD_SIZE - margin * 2),
-    y: margin + Math.random() * (WORLD_SIZE - margin * 2),
-  };
-}
-
-function spawnFood() {
-  const p = randomPoint(50);
-  game.food.push({ x: p.x, y: p.y, id: Math.random().toString(36).slice(2) });
-}
-function ensureFood() {
-  while (game.food.length < FOOD_COUNT) spawnFood();
-}
-ensureFood();
-
-function alivePlayers() {
-  return Object.values(game.players).filter((p) => p.alive);
-}
-
-function tryStartGame() {
-  const players = Object.values(game.players);
-  const count = players.length;
-  const allReady = count > 0 && players.every((p) => p.ready);
-  if (game.status === "waiting" && count >= 2 && allReady) {
-    game.status = "running";
-    io.emit("gameStarted");
-  }
-}
-
-function endGameIfNeeded() {
-  if (game.status !== "running") return;
-  const alive = alivePlayers();
-  if (alive.length <= 1) {
-    game.status = "ended";
-    game.winnerId = alive.length === 1 ? alive[0].id : null;
-    io.emit("gameOver", {
-      winnerId: game.winnerId,
-      winnerName: alive.length === 1 ? alive[0].name : null,
-    });
-    setTimeout(() => {
-      game = freshGameState();
-      ensureFood();
-      io.emit("gameReset");
-    }, 8000);
-  }
-}
-
-function makeSnake(id, name) {
-  const start = randomPoint(300);
-  const angle = Math.random() * Math.PI * 2;
-  const segments = [];
-  for (let i = 0; i < START_SEGMENTS; i++) {
-    segments.push({
-      x: start.x - Math.cos(angle) * i * SEGMENT_SPACING,
-      y: start.y - Math.sin(angle) * i * SEGMENT_SPACING,
-    });
-  }
-  return {
-    id,
-    name,
-    alive: true,
-    angle,
-    targetAngle: angle,
-    segments,
-    growth: 0, // چند حلقه هنوز باید اضافه بشه
-    ready: false,
-  };
-}
-
-io.on("connection", (socket) => {
-  socket.on("join", (payload) => {
-    const name = (payload && payload.name ? String(payload.name) : "Player").slice(0, 20);
-
-    if (Object.keys(game.players).length >= MAX_PLAYERS) {
-      socket.emit("joinRejected", { reason: "room_full" });
-      return;
-    }
-    if (game.status === "running") {
-      socket.emit("joinRejected", { reason: "game_in_progress" });
-      return;
-    }
-
-    game.players[socket.id] = makeSnake(socket.id, name);
-    socket.emit("joined", { id: socket.id, worldSize: WORLD_SIZE });
-    tryStartGame();
-  });
-
-  socket.on("input", (data) => {
-    const p = game.players[socket.id];
-    if (!p || !p.alive) return;
-    if (typeof data.angle === "number") p.targetAngle = data.angle;
-  });
-
-  socket.on("ready", () => {
-    const p = game.players[socket.id];
-    if (!p || game.status !== "waiting") return;
-    p.ready = true;
-    tryStartGame();
-  });
-
-  socket.on("disconnect", () => {
-    delete game.players[socket.id];
-    endGameIfNeeded();
-    tryStartGame();
-  });
-});
-
-function angleDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-
-// برای کاهش حجم داده: به‌جای فرستادن همه‌ی حلقه‌های بدن، هر حلقه‌ی دوم رو می‌فرستیم.
-// کلاینت با رسم یه خط پیوسته (نه دایره جدا) این کاهش رزولوشن رو کاملاً نامحسوس می‌کنه.
-function thinSegments(segs) {
-  if (segs.length <= 2) return segs.map((s) => [Math.round(s.x), Math.round(s.y)]);
-  const out = [];
-  for (let i = 0; i < segs.length; i += 2) out.push([Math.round(segs[i].x), Math.round(segs[i].y)]);
-  const last = segs[segs.length - 1];
-  const lx = Math.round(last.x), ly = Math.round(last.y);
-  const lo = out[out.length - 1];
-  if (lo[0] !== lx || lo[1] !== ly) out.push([lx, ly]);
-  return out;
-}
-
-let lastTick = Date.now();
-let tickCounter = 0;
-const BROADCAST_EVERY_N_TICKS = Math.max(1, Math.round(TICK_RATE / BROADCAST_RATE));
-
-setInterval(() => {
-  const now = Date.now();
-  const dt = (now - lastTick) / 1000;
-  lastTick = now;
-  tickCounter++;
-
-  if (game.status === "running") {
-    const snakes = Object.values(game.players).filter((p) => p.alive);
-
-    // چرخش و حرکت سر
-    for (const p of snakes) {
-      const diff = angleDiff(p.angle, p.targetAngle);
-      const maxTurn = TURN_RATE * dt;
-      if (Math.abs(diff) <= maxTurn) p.angle = p.targetAngle;
-      else p.angle += Math.sign(diff) * maxTurn;
-
-      const head = p.segments[0];
-      const newHead = {
-        x: head.x + Math.cos(p.angle) * SPEED * dt,
-        y: head.y + Math.sin(p.angle) * SPEED * dt,
-      };
-
-      // برخورد با دیوار
-      if (
-        newHead.x < 0 || newHead.y < 0 ||
-        newHead.x > WORLD_SIZE || newHead.y > WORLD_SIZE
-      ) {
-        p.alive = false;
-        io.emit("playerDown", { id: p.id, name: p.name });
-        continue;
-      }
-
-      p.segments.unshift(newHead);
-
-      // رشد یا کوتاه‌شدن دم بر اساس growth
-      if (p.growth > 0) {
-        p.growth -= 1;
-      } else {
-        p.segments.pop();
-      }
-
-      // خوردن غذا
-      for (let i = game.food.length - 1; i >= 0; i--) {
-        const f = game.food[i];
-        const dist = Math.hypot(f.x - newHead.x, f.y - newHead.y);
-        if (dist < HEAD_RADIUS + FOOD_RADIUS) {
-          game.food.splice(i, 1);
-          if (p.segments.length + p.growth < MAX_SEGMENTS) {
-            p.growth += GROW_PER_FOOD;
-          }
-        }
-      }
-    }
-    ensureFood();
-
-    // برخورد سر با بدن (خودش یا دیگران) — با گرید مکانی برای سرعت بیشتر
-    const CELL = (HEAD_RADIUS + BODY_RADIUS) * 3;
-    const grid = new Map();
-    function cellKey(x, y) {
-      return Math.floor(x / CELL) + "_" + Math.floor(y / CELL);
-    }
-    for (const other of snakes) {
-      const segs = other.segments;
-      for (let i = 0; i < segs.length; i++) {
-        const s = segs[i];
-        const key = cellKey(s.x, s.y);
-        if (!grid.has(key)) grid.set(key, []);
-        grid.get(key).push({ ownerId: other.id, idx: i, x: s.x, y: s.y });
-      }
-    }
-    for (const p of snakes) {
-      if (!p.alive) continue;
-      const head = p.segments[0];
-      const cx = Math.floor(head.x / CELL);
-      const cy = Math.floor(head.y / CELL);
-      outer: for (let gx = cx - 1; gx <= cx + 1; gx++) {
-        for (let gy = cy - 1; gy <= cy + 1; gy++) {
-          const bucket = grid.get(gx + "_" + gy);
-          if (!bucket) continue;
-          for (const item of bucket) {
-            if (item.ownerId === p.id && item.idx < SELF_COLLISION_SKIP) continue;
-            const dist = Math.hypot(item.x - head.x, item.y - head.y);
-            if (dist < HEAD_RADIUS + BODY_RADIUS - 2) {
-              p.alive = false;
-              io.emit("playerDown", { id: p.id, name: p.name });
-              break outer;
-            }
-          }
-        }
-      }
-    }
-
-    endGameIfNeeded();
-  }
-
-  if (tickCounter % BROADCAST_EVERY_N_TICKS === 0) {
-    io.volatile.emit("state", {
-      status: game.status,
-      food: game.food.map((f) => [Math.round(f.x), Math.round(f.y)]),
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        alive: p.alive,
-        ready: p.ready,
-        angle: p.angle,
-        segments: thinSegments(p.segments),
-      })),
-    });
-  }
-}, 1000 / TICK_RATE);
-
+app.get("/", (req, res) => res.send("Mafia bot is running."));
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(PORT, () => console.log("HTTP server on port " + PORT));
 
-// ---------- بات تلگرام ----------
-const TelegramBot = require("node-telegram-bot-api");
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL;
-
-if (BOT_TOKEN) {
+if (!BOT_TOKEN) {
+  console.log("BOT_TOKEN not set — bot disabled.");
+} else {
   const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-  function sendGameButton(chatId) {
-    bot.sendMessage(chatId, "برای بازی رو دکمه زیر بزن 👇", {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🐍 شروع بازی", web_app: { url: WEBAPP_URL } }],
-        ],
-      },
-    });
-  }
+  // ---------- تنظیمات بازی ----------
+  const MIN_PLAYERS = 4;
+  const REGISTER_DURATION_MS = 3 * 60 * 1000;
+  const NIGHT_DURATION_MS = 2 * 60 * 1000;
+  const DAY_DURATION_MS = 2 * 60 * 1000;
 
-  bot.onText(/\/start/, (msg) => {
-    sendGameButton(msg.chat.id);
-  });
+  const MAFIA_DEFS = [
+    { key: "godfather", name: "پدرخوانده" },
+    { key: "mafia", name: "مافیای ساده" },
+    { key: "silencer", name: "خفه‌کننده مافیا" },
+  ];
+  const CITIZEN_SPECIAL_DEFS = [
+    { key: "doctor", name: "دکتر" },
+    { key: "detective", name: "کارآگاه" },
+    { key: "bodyguard", name: "بادیگارد" },
+    { key: "sniper", name: "تک‌تیرانداز" },
+    { key: "president", name: "رییس جمهور" },
+  ];
+  const CITIZEN_PLAIN_NAMES = ["روزنامه‌نگار", "معلم", "کاسب", "راننده تاکسی", "آشپز", "نجار"];
 
-  // واکنش به پیام متنی "مار بازی" در گروه یا خصوصی — حتی با فاصله‌های نامرئی یا نویسه‌های عربی/فارسی متفاوت
+  const games = new Map(); // chatId(string) -> game
+  const dmContext = new Map(); // userId(number) -> chatId(string)
+  let botUsername = null;
+  bot.getMe().then((me) => { botUsername = me.username; });
+
   function normalizeText(t) {
     return t
       .replace(/[\u200c\u200f\u200e\u00a0]/g, " ")
@@ -318,15 +45,445 @@ if (BOT_TOKEN) {
       .replace(/\s+/g, " ")
       .trim();
   }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function assignRoleDefs(n) {
+    const mafiaCount = n <= 5 ? 1 : n <= 8 ? 2 : 3;
+    const mafiaRoles = MAFIA_DEFS.slice(0, mafiaCount);
+    const citizensCount = n - mafiaCount;
+    const specialCount = Math.min(citizensCount, CITIZEN_SPECIAL_DEFS.length);
+    const specialRoles = CITIZEN_SPECIAL_DEFS.slice(0, specialCount);
+    const plainCount = citizensCount - specialCount;
+    const plainRoles = [];
+    for (let i = 0; i < plainCount; i++) {
+      const base = CITIZEN_PLAIN_NAMES[i % CITIZEN_PLAIN_NAMES.length];
+      const suffix = i >= CITIZEN_PLAIN_NAMES.length ? " " + (Math.floor(i / CITIZEN_PLAIN_NAMES.length) + 1) : "";
+      plainRoles.push({ key: "plain", name: base + suffix });
+    }
+    return shuffle([...mafiaRoles, ...specialRoles, ...plainRoles]);
+  }
+
+  function isMafiaKey(key) {
+    return key === "godfather" || key === "mafia" || key === "silencer";
+  }
+
+  function roleInstructions(key, name) {
+    const base = `🎭 نقش تو: ${name}\n\nهر وقت خواستی تو گروه به‌عنوان این نقش صحبت کنی، تو همین پیوی بنویس:\nبگو <متن>\n\n`;
+    switch (key) {
+      case "godfather":
+      case "mafia":
+        return base + `شب‌ها می‌تونی بنویسی: بکش <اسم بازیکن>\nهیچ‌کدوم از اعضای مافیا لازم نیست تایید بگیرن، آخرین دستوری که هر شب زده بشه اجرا میشه.`;
+      case "silencer":
+        return base + `شب‌ها می‌تونی بنویسی: ساکت کن <اسم بازیکن>\nاون فرد فردا نمی‌تونه با «بگو» صحبت کنه.`;
+      case "doctor":
+        return base + `شب‌ها می‌تونی بنویسی: نجات بده <اسم بازیکن>\nاگه همون فرد هدف مافیا باشه، زنده می‌مونه.`;
+      case "detective":
+        return base + `شب‌ها می‌تونی بنویسی: استعلام <اسم بازیکن>\nصبح نتیجه (مافیا هست یا نه) رو برات می‌فرستم.`;
+      case "bodyguard":
+        return base + `شب‌ها می‌تونی بنویسی: محافظت کن <اسم بازیکن>\nاگه مافیا همون فرد رو هدف بگیره، مهاجم مافیا کشته میشه.`;
+      case "sniper":
+        return base + `فقط یه بار تو کل بازی می‌تونی بنویسی: شلیک کن <اسم بازیکن>\nاگه درست حدس بزنی (مافیا باشه) اون می‌میره، وگرنه خودت می‌میری.`;
+      case "president":
+        return base + `تو رأی‌گیری روز معمولاً ۱ رأی داری، ولی هر ۲ روز یک‌بار ۲ رأی می‌گیری (می‌تونی هر دو رو به یه نفر بدی یا بین دو نفر تقسیم کنی). رأی‌گیری با دکمه زیر پیام لیست بازیکن‌هاست.`;
+      default:
+        return base + `قدرت خاصی نداری، ولی رأیت تو اعدام روز مهمه. با هوش گوش کن و مافیا رو پیدا کن!`;
+    }
+  }
+
+  // ---------- شروع بازی از گروه ----------
+  function startRegistration(chatId) {
+    const key = String(chatId);
+    const existing = games.get(key);
+    if (existing && existing.status !== "ended") {
+      bot.sendMessage(chatId, "یه بازی مافیا همین الان در جریانه یا در حال ثبت‌نامه!");
+      return;
+    }
+    const game = {
+      chatId: key,
+      status: "registering",
+      players: new Map(), // userId(number) -> player
+      nightNumber: 0,
+      nightActions: {},
+      registerTimer: null,
+      phaseTimer: null,
+    };
+    games.set(key, game);
+
+    const joinUrl = botUsername
+      ? `https://t.me/${botUsername}?start=join_${key}`
+      : null;
+
+    bot.sendMessage(
+      chatId,
+      `🕵️ بازی مافیا شروع شد!\nبرای پیوستن دکمه زیر رو بزن (میره تو پیوی بات).\nحداقل ${MIN_PLAYERS} نفر لازمه، ${REGISTER_DURATION_MS / 60000} دقیقه وقت داری.`,
+      joinUrl ? { reply_markup: { inline_keyboard: [[{ text: "🎭 ورود به بازی", url: joinUrl }]] } } : undefined
+    );
+
+    game.registerTimer = setTimeout(() => finishRegistration(key), REGISTER_DURATION_MS);
+  }
+
+  function finishRegistration(key) {
+    const game = games.get(key);
+    if (!game || game.status !== "registering") return;
+    if (game.players.size < MIN_PLAYERS) {
+      bot.sendMessage(key, `❌ فقط ${game.players.size} نفر ثبت‌نام کردن، حداقل ${MIN_PLAYERS} نفر لازمه. بازی لغو شد.`);
+      games.delete(key);
+      return;
+    }
+    assignRolesAndStart(key);
+  }
+
+  function assignRolesAndStart(key) {
+    const game = games.get(key);
+    const ids = shuffle([...game.players.keys()]);
+    const roles = assignRoleDefs(ids.length);
+
+    ids.forEach((id, i) => {
+      const r = roles[i];
+      const p = game.players.get(id);
+      p.role = r.name;
+      p.roleKey = r.key;
+      p.isMafia = isMafiaKey(r.key);
+      p.alive = true;
+      p.silencedToday = false;
+      if (r.key === "sniper") p.sniperUsed = false;
+      if (r.key === "president") p.presidentCooldown = 0;
+      bot.sendMessage(id, roleInstructions(r.key, r.name));
+    });
+
+    const mafiaIds = ids.filter((id) => game.players.get(id).isMafia);
+    if (mafiaIds.length > 1) {
+      const list = mafiaIds.map((id) => `${game.players.get(id).name} (${game.players.get(id).role})`).join("\n");
+      mafiaIds.forEach((id) => bot.sendMessage(id, `👥 اعضای تیم مافیا:\n${list}`));
+    }
+
+    bot.sendMessage(key, `✅ بازی با ${ids.length} نفر شروع شد! نقش‌ها تو پیوی هرکس ارسال شد.`);
+    startNight(key);
+  }
+
+  // ---------- شب ----------
+  function startNight(key) {
+    const game = games.get(key);
+    if (!game) return;
+    game.status = "night";
+    game.nightNumber++;
+    game.nightActions = {};
+    bot.sendMessage(key, `🌙 شب ${game.nightNumber} شد. همه‌چیز تو پیوی انجام میشه... (${NIGHT_DURATION_MS / 60000} دقیقه)`);
+    game.phaseTimer = setTimeout(() => resolveNight(key), NIGHT_DURATION_MS);
+  }
+
+  function resolveNight(key) {
+    const game = games.get(key);
+    if (!game) return;
+    const na = game.nightActions;
+    const lines = [];
+    const deaths = new Set();
+
+    if (na.mafiaKillTarget) {
+      const targetId = na.mafiaKillTarget;
+      if (na.bodyguardProtectTarget && na.bodyguardProtectTarget === targetId) {
+        if (na.mafiaActorId) deaths.add(na.mafiaActorId);
+        lines.push(`🛡️ بادیگارد جلوی حمله به ${game.players.get(targetId).name} رو گرفت و مهاجم مافیا کشته شد!`);
+      } else if (na.doctorSaveTarget && na.doctorSaveTarget === targetId) {
+        lines.push(`💉 دکتر ${game.players.get(targetId).name} رو نجات داد!`);
+      } else {
+        deaths.add(targetId);
+      }
+    }
+
+    if (na.sniperTarget && na.sniperUserId) {
+      const t = game.players.get(na.sniperTarget);
+      if (t && t.isMafia) {
+        deaths.add(na.sniperTarget);
+        lines.push(`🎯 تک‌تیرانداز درست حدس زد، ${t.name} (مافیا) کشته شد!`);
+      } else {
+        deaths.add(na.sniperUserId);
+        lines.push(`🎯 تک‌تیرانداز اشتباه شلیک کرد و خودش کشته شد!`);
+      }
+    }
+
+    if (na.silencerTarget) {
+      const sp = game.players.get(na.silencerTarget);
+      if (sp) {
+        sp.silencedToday = true;
+        lines.push(`🤐 یه نفر امشب توسط مافیا ساکت شد (فردا نمی‌تونه پیام بده).`);
+      }
+    }
+
+    if (deaths.size === 0) {
+      lines.unshift("😌 دیشب کسی کشته نشد.");
+    } else {
+      for (const id of deaths) {
+        const p = game.players.get(id);
+        if (p && p.alive) {
+          p.alive = false;
+          lines.push(`💀 ${p.name} (نقش: ${p.role}) کشته شد.`);
+        }
+      }
+    }
+
+    bot.sendMessage(key, `☀️ صبح شد!\n\n${lines.join("\n")}`);
+
+    if (na.detectiveTarget && na.detectiveUserId) {
+      const tp = game.players.get(na.detectiveTarget);
+      if (tp) {
+        bot.sendMessage(
+          na.detectiveUserId,
+          `🔍 نتیجه استعلام ${tp.name}: ${tp.isMafia ? "مافیاست! 🔴" : "مافیا نیست ✅"}`
+        );
+      }
+    }
+
+    if (checkWin(key)) return;
+    startDay(key);
+  }
+
+  // ---------- روز ----------
+  function startDay(key) {
+    const game = games.get(key);
+    if (!game) return;
+    game.status = "day";
+    game.voteTally = new Map();
+    game.voteTokens = new Map();
+
+    const alive = [...game.players.values()].filter((p) => p.alive);
+    alive.forEach((p) => {
+      let tokens = 1;
+      if (p.roleKey === "president") {
+        if (p.presidentCooldown <= 0) {
+          tokens = 2;
+          p.presidentCooldown = 2;
+        } else {
+          p.presidentCooldown--;
+        }
+      }
+      game.voteTokens.set(p.id, tokens);
+    });
+
+    const buttons = alive.map((p) => [{ text: `🗳️ ${p.name}`, callback_data: `vote_${key}_${p.id}` }]);
+    bot.sendMessage(
+      key,
+      `☀️ روز ${game.nightNumber} شد! وقت رأی‌گیریه (${DAY_DURATION_MS / 60000} دقیقه). رو اسم کسی که می‌خواید اعدام بشه بزنید:`,
+      { reply_markup: { inline_keyboard: buttons } }
+    );
+
+    game.phaseTimer = setTimeout(() => resolveDay(key), DAY_DURATION_MS);
+  }
+
+  function resolveDay(key) {
+    const game = games.get(key);
+    if (!game) return;
+    const tally = game.voteTally || new Map();
+    let maxVotes = 0;
+    let winners = [];
+    for (const [id, count] of tally) {
+      if (count > maxVotes) {
+        maxVotes = count;
+        winners = [id];
+      } else if (count === maxVotes) {
+        winners.push(id);
+      }
+    }
+
+    if (winners.length === 1 && maxVotes > 0) {
+      const p = game.players.get(winners[0]);
+      p.alive = false;
+      bot.sendMessage(key, `⚖️ ${p.name} با ${maxVotes} رأی اعدام شد. نقشش: ${p.role}`);
+    } else {
+      bot.sendMessage(key, `⚖️ رأی‌گیری بدون نتیجه تموم شد (مساوی یا بدون رأی)، امروز کسی اعدام نشد.`);
+    }
+
+    for (const p of game.players.values()) p.silencedToday = false;
+
+    if (checkWin(key)) return;
+    startNight(key);
+  }
+
+  function checkWin(key) {
+    const game = games.get(key);
+    if (!game) return true;
+    const alive = [...game.players.values()].filter((p) => p.alive);
+    const mafiaAlive = alive.filter((p) => p.isMafia).length;
+    const citizensAlive = alive.length - mafiaAlive;
+    if (mafiaAlive === 0) {
+      endGame(key, "🎉 شهروندان بردن! همه‌ی مافیاها حذف شدن.");
+      return true;
+    }
+    if (mafiaAlive >= citizensAlive) {
+      endGame(key, "🔪 مافیا برد! تعداد مافیاها به شهروندا رسید یا بیشتر شد.");
+      return true;
+    }
+    return false;
+  }
+
+  function endGame(key, text) {
+    const game = games.get(key);
+    if (!game) return;
+    clearTimeout(game.phaseTimer);
+    clearTimeout(game.registerTimer);
+    const roleList = [...game.players.values()]
+      .map((p) => `${p.name}: ${p.role}${p.alive ? " (زنده ماند)" : " (حذف شد)"}`)
+      .join("\n");
+    bot.sendMessage(key, `${text}\n\n📋 نقش همه:\n${roleList}`);
+    for (const id of game.players.keys()) dmContext.delete(id);
+    games.delete(key);
+  }
+
+  // ---------- ورود بازیکن از دکمه ----------
+  function handleJoinRequest(chatKey, from) {
+    const game = games.get(chatKey);
+    if (!game || game.status !== "registering") {
+      bot.sendMessage(from.id, "الان بازی‌ای برای پیوستن وجود نداره.");
+      return;
+    }
+    if (game.players.has(from.id)) {
+      bot.sendMessage(from.id, "قبلاً ثبت‌نام کردی، منتظر شروع بازی باش.");
+      return;
+    }
+    game.players.set(from.id, { id: from.id, name: from.first_name || "بازیکن" });
+    dmContext.set(from.id, chatKey);
+    bot.sendMessage(from.id, `✅ آماده شدی! (بازیکن ${game.players.size}) — بعد شروع بازی، نقشت همینجا برات میاد.`);
+    bot.sendMessage(chatKey, `🎭 ${from.first_name || "یه نفر"} وارد بازی مافیا شد. (${game.players.size} نفر)`);
+  }
+
+  // ---------- پیام‌های گروه ----------
   bot.on("message", (msg) => {
     if (!msg.text) return;
+    if (msg.chat.type !== "group" && msg.chat.type !== "supergroup") return;
     const text = normalizeText(msg.text);
-    if (text.includes("مار بازی") || text.includes("بازی مار")) {
-      sendGameButton(msg.chat.id);
+    if (text === "مافیا بازی" || text === "بازی مافیا") {
+      startRegistration(msg.chat.id);
     }
   });
 
-  console.log("Telegram bot polling started");
-} else {
-  console.log("BOT_TOKEN not set — bot disabled, only game server is running");
+  // ---------- دستور /start (شامل دیپ‌لینک پیوستن) ----------
+  bot.onText(/^\/start(?:\s+(.+))?$/, (msg, match) => {
+    if (msg.chat.type !== "private") return;
+    const payload = match && match[1];
+    if (payload && payload.startsWith("join_")) {
+      const chatKey = payload.slice(5);
+      handleJoinRequest(chatKey, msg.from);
+    } else {
+      bot.sendMessage(msg.chat.id, "سلام! برای بازی مافیا تو گروه بنویس: مافیا بازی");
+    }
+  });
+
+  // ---------- پیام‌های پیوی (بگو / دستورهای شب) ----------
+  bot.on("message", (msg) => {
+    if (!msg.text || msg.chat.type !== "private") return;
+    if (msg.text.startsWith("/start")) return;
+    const userId = msg.from.id;
+    const chatKey = dmContext.get(userId);
+    if (!chatKey) return;
+    const game = games.get(chatKey);
+    if (!game) return;
+    const player = game.players.get(userId);
+    if (!player || !player.alive || !player.role) return;
+
+    const text = normalizeText(msg.text);
+
+    if (text.startsWith("بگو ")) {
+      if (player.silencedToday) {
+        bot.sendMessage(userId, "🤐 الان ساکت شدی و نمی‌تونی صحبت کنی.");
+        return;
+      }
+      const say = msg.text.slice(msg.text.indexOf(" ") + 1);
+      bot.sendMessage(chatKey, `${player.role} : ${say}`);
+      return;
+    }
+
+    if (game.status !== "night") return;
+
+    function findTarget(nameQuery) {
+      const q = normalizeText(nameQuery);
+      const alive = [...game.players.values()].filter((p) => p.alive);
+      return alive.find((p) => normalizeText(p.name) === q) || alive.find((p) => normalizeText(p.name).includes(q));
+    }
+
+    if ((player.roleKey === "godfather" || player.roleKey === "mafia") && text.startsWith("بکش ")) {
+      const target = findTarget(text.slice(4));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      game.nightActions.mafiaKillTarget = target.id;
+      game.nightActions.mafiaActorId = userId;
+      bot.sendMessage(userId, `✅ امشب ${target.name} رو برای کشتن انتخاب کردی.`);
+      return;
+    }
+    if (player.roleKey === "silencer" && text.startsWith("ساکت کن ")) {
+      const target = findTarget(text.slice(8));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      game.nightActions.silencerTarget = target.id;
+      bot.sendMessage(userId, `✅ ${target.name} رو امشب ساکت می‌کنی.`);
+      return;
+    }
+    if (player.roleKey === "doctor" && text.startsWith("نجات بده ")) {
+      const target = findTarget(text.slice(9));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      game.nightActions.doctorSaveTarget = target.id;
+      bot.sendMessage(userId, `✅ امشب ${target.name} رو نجات می‌دی.`);
+      return;
+    }
+    if (player.roleKey === "detective" && text.startsWith("استعلام ")) {
+      const target = findTarget(text.slice(8));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      game.nightActions.detectiveTarget = target.id;
+      game.nightActions.detectiveUserId = userId;
+      bot.sendMessage(userId, `✅ فردا صبح نتیجه استعلام ${target.name} برات میاد.`);
+      return;
+    }
+    if (player.roleKey === "bodyguard" && text.startsWith("محافظت کن ")) {
+      const target = findTarget(text.slice(11));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      game.nightActions.bodyguardProtectTarget = target.id;
+      bot.sendMessage(userId, `✅ امشب از ${target.name} محافظت می‌کنی.`);
+      return;
+    }
+    if (player.roleKey === "sniper" && text.startsWith("شلیک کن ")) {
+      if (player.sniperUsed) return bot.sendMessage(userId, "❌ قبلاً از قدرتت استفاده کردی، فقط یه بار داری.");
+      const target = findTarget(text.slice(8));
+      if (!target) return bot.sendMessage(userId, "❌ همچین بازیکنی پیدا نشد.");
+      player.sniperUsed = true;
+      game.nightActions.sniperTarget = target.id;
+      game.nightActions.sniperUserId = userId;
+      bot.sendMessage(userId, `🎯 امشب به ${target.name} شلیک کردی!`);
+      return;
+    }
+  });
+
+  // ---------- رأی‌گیری روز (دکمه‌ها) ----------
+  bot.on("callback_query", (q) => {
+    if (!q.data || !q.data.startsWith("vote_")) return;
+    const rest = q.data.slice(5);
+    const lastUnderscore = rest.lastIndexOf("_");
+    const chatKey = rest.slice(0, lastUnderscore);
+    const targetId = Number(rest.slice(lastUnderscore + 1));
+    const game = games.get(chatKey);
+    if (!game || game.status !== "day") {
+      bot.answerCallbackQuery(q.id, { text: "الان وقت رأی‌گیری نیست." });
+      return;
+    }
+    const voter = game.players.get(q.from.id);
+    if (!voter || !voter.alive) {
+      bot.answerCallbackQuery(q.id, { text: "شما تو بازی نیستی یا حذف شدی." });
+      return;
+    }
+    const tokens = game.voteTokens.get(voter.id) || 0;
+    if (tokens <= 0) {
+      bot.answerCallbackQuery(q.id, { text: "رأی‌هات تموم شده." });
+      return;
+    }
+    game.voteTokens.set(voter.id, tokens - 1);
+    game.voteTally.set(targetId, (game.voteTally.get(targetId) || 0) + 1);
+    const targetName = game.players.get(targetId) ? game.players.get(targetId).name : "؟";
+    bot.answerCallbackQuery(q.id, { text: `رأیت برای ${targetName} ثبت شد! (${tokens - 1} رأی باقی مونده)` });
+  });
+
+  console.log("Mafia bot polling started");
 }
