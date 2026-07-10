@@ -169,6 +169,39 @@ if (!BOT_TOKEN) {
     startNight(key);
   }
 
+  const ACTION_LABELS = {
+    kill: "🔪 کشتن",
+    silence: "🤐 ساکت کردن",
+    save: "💉 نجات دادن",
+    investigate: "🔍 استعلام گرفتن از",
+    protect: "🛡️ محافظت از",
+    snipe: "🎯 شلیک به",
+  };
+  const ROLE_TO_ACTION = {
+    godfather: "kill",
+    mafia: "kill",
+    silencer: "silence",
+    doctor: "save",
+    detective: "investigate",
+    bodyguard: "protect",
+    sniper: "snipe",
+  };
+
+  function sendNightPrompts(key) {
+    const game = games.get(key);
+    if (!game) return;
+    const alive = [...game.players.values()].filter((p) => p.alive);
+    for (const p of alive) {
+      const action = ROLE_TO_ACTION[p.roleKey];
+      if (!action) continue;
+      if (p.roleKey === "sniper" && p.sniperUsed) continue;
+      const buttons = alive.map((t) => [{ text: t.name, callback_data: `night_${action}_${key}_${t.id}` }]);
+      bot.sendMessage(p.id, `🌙 ${ACTION_LABELS[action]} کی؟ رو اسمش بزن:`, {
+        reply_markup: { inline_keyboard: buttons },
+      });
+    }
+  }
+
   // ---------- شب ----------
   function startNight(key) {
     const game = games.get(key);
@@ -177,6 +210,7 @@ if (!BOT_TOKEN) {
     game.nightNumber++;
     game.nightActions = {};
     bot.sendMessage(key, `🌙 شب ${game.nightNumber} شد. همه‌چیز تو پیوی انجام میشه... (${NIGHT_DURATION_MS / 60000} دقیقه)`);
+    sendNightPrompts(key);
     game.phaseTimer = setTimeout(() => resolveNight(key), NIGHT_DURATION_MS);
   }
 
@@ -359,7 +393,7 @@ if (!BOT_TOKEN) {
     if (!msg.text) return;
     if (msg.chat.type !== "group" && msg.chat.type !== "supergroup") return;
     const text = normalizeText(msg.text);
-    if (text === "مافیا بازی" || text === "بازی مافیا") {
+    if (text === "مافیا" || text === "مافیا بازی" || text === "بازی مافیا") {
       startRegistration(msg.chat.id);
     }
   });
@@ -483,6 +517,64 @@ if (!BOT_TOKEN) {
     game.voteTally.set(targetId, (game.voteTally.get(targetId) || 0) + 1);
     const targetName = game.players.get(targetId) ? game.players.get(targetId).name : "؟";
     bot.answerCallbackQuery(q.id, { text: `رأیت برای ${targetName} ثبت شد! (${tokens - 1} رأی باقی مونده)` });
+  });
+
+  // ---------- دکمه‌های اقدام شب ----------
+  bot.on("callback_query", (q) => {
+    if (!q.data || !q.data.startsWith("night_")) return;
+    const parts = q.data.split("_");
+    const action = parts[1];
+    const chatKey = parts[2];
+    const targetId = Number(parts[3]);
+    const game = games.get(chatKey);
+    if (!game || game.status !== "night") {
+      bot.answerCallbackQuery(q.id, { text: "الان شب نیست." });
+      return;
+    }
+    const player = game.players.get(q.from.id);
+    if (!player || !player.alive) {
+      bot.answerCallbackQuery(q.id, { text: "شما تو بازی نیستی یا حذف شدی." });
+      return;
+    }
+    const target = game.players.get(targetId);
+    if (!target || !target.alive) {
+      bot.answerCallbackQuery(q.id, { text: "این بازیکن دیگه زنده نیست." });
+      return;
+    }
+
+    if (action === "kill") {
+      if (player.roleKey !== "godfather" && player.roleKey !== "mafia") {
+        return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست." });
+      }
+      game.nightActions.mafiaKillTarget = target.id;
+      game.nightActions.mafiaActorId = player.id;
+      bot.answerCallbackQuery(q.id, { text: `✅ ${target.name} رو برای کشتن انتخاب کردی.` });
+    } else if (action === "silence") {
+      if (player.roleKey !== "silencer") return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست." });
+      game.nightActions.silencerTarget = target.id;
+      bot.answerCallbackQuery(q.id, { text: `✅ ${target.name} رو امشب ساکت می‌کنی.` });
+    } else if (action === "save") {
+      if (player.roleKey !== "doctor") return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست." });
+      game.nightActions.doctorSaveTarget = target.id;
+      bot.answerCallbackQuery(q.id, { text: `✅ امشب ${target.name} رو نجات می‌دی.` });
+    } else if (action === "investigate") {
+      if (player.roleKey !== "detective") return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست." });
+      game.nightActions.detectiveTarget = target.id;
+      game.nightActions.detectiveUserId = player.id;
+      bot.answerCallbackQuery(q.id, { text: `✅ فردا صبح نتیجه استعلام ${target.name} میاد.` });
+    } else if (action === "protect") {
+      if (player.roleKey !== "bodyguard") return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست." });
+      game.nightActions.bodyguardProtectTarget = target.id;
+      bot.answerCallbackQuery(q.id, { text: `✅ امشب از ${target.name} محافظت می‌کنی.` });
+    } else if (action === "snipe") {
+      if (player.roleKey !== "sniper" || player.sniperUsed) {
+        return bot.answerCallbackQuery(q.id, { text: "این کار برای نقش تو نیست یا قبلاً استفاده کردی." });
+      }
+      player.sniperUsed = true;
+      game.nightActions.sniperTarget = target.id;
+      game.nightActions.sniperUserId = player.id;
+      bot.answerCallbackQuery(q.id, { text: `🎯 به ${target.name} شلیک کردی!` });
+    }
   });
 
   console.log("Mafia bot polling started");
