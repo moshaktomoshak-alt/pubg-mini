@@ -1,0 +1,383 @@
+import os
+import random
+import re
+import asyncio
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+
+# ---------- سرور سلامت (برای Railway) ----------
+def start_health_server():
+    port = int(os.environ.get("PORT", 3000))
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Spy game bot is running.")
+
+        def log_message(self, format, *args):
+            pass
+
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+
+
+threading.Thread(target=start_health_server, daemon=True).start()
+
+# ---------- تنظیمات بازی ----------
+MIN_PLAYERS = 3
+REGISTER_DURATION = 2 * 60      # ۲ دقیقه برای جمع شدن بازیکن‌ها
+CLUE_TIMEOUT = 45               # هر نفر ۴۵ ثانیه برای توصیف
+VOTE_DURATION = 90              # ۹۰ ثانیه برای رأی‌گیری
+GUESS_TIMEOUT = 45              # فرصت جاسوس برای حدس کلمه
+
+WORDS = [
+    "فوتبال", "سینما", "پیتزا", "دریا", "کوهنوردی", "کتابخانه", "قطار", "هواپیما",
+    "دکتر", "معلم", "آشپز", "نانوایی", "باغ‌وحش", "کنسرت", "عروسی", "تولد",
+    "کافه", "رستوران", "کوه", "جنگل", "بیابان", "رودخانه", "دریاچه", "جزیره",
+    "کتاب", "روزنامه", "گوشی", "لپ‌تاپ", "دوچرخه", "ماشین", "موتور", "اتوبوس",
+    "مدرسه", "دانشگاه", "بیمارستان", "داروخانه", "بانک", "فرودگاه", "ایستگاه مترو",
+    "پارک", "استخر", "باشگاه", "سینما", "تئاتر", "موزه", "کتابفروشی", "سوپرمارکت",
+    "گیتار", "پیانو", "طبل", "ویولن", "نقاشی", "مجسمه‌سازی", "عکاسی", "رقص",
+    "شطرنج", "فوتسال", "بسکتبال", "والیبال", "شنا", "دو میدانی", "کشتی", "بوکس",
+    "چای", "قهوه", "بستنی", "کیک", "شکلات", "هندوانه", "سیب", "موز",
+    "برف", "باران", "رعد و برق", "رنگین‌کمان", "غروب آفتاب", "طلوع آفتاب",
+    "عینک آفتابی", "چتر", "کوله‌پشتی", "چمدان", "ساعت مچی", "کفش ورزشی",
+    "تلفن همراه", "دوربین", "تلویزیون", "یخچال", "ماشین لباسشویی", "جارو برقی",
+    "آتش‌نشانی", "پلیس", "خلبان", "کاپیتان کشتی", "راننده تاکسی", "پرستار",
+]
+
+games = {}       # chat_key(str) -> game dict
+dm_context = {}  # user_id(int) -> chat_key(str)
+bot_username = None
+
+TRIGGER_PHRASES = {"جاسوس", "بازی جاسوس", "حدس بزن کی جاسوسه", "کی جاسوسه"}
+
+
+def normalize_text(t):
+    t = re.sub(r"[\u200c\u200f\u200e\u00a0]", " ", t)
+    t = t.replace("ي", "ی").replace("ك", "ک")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def alive_names(game):
+    return {uid: p["name"] for uid, p in game["players"].items()}
+
+
+# ---------- شروع ثبت‌نام ----------
+async def start_registration(context: ContextTypes.DEFAULT_TYPE, chat_id):
+    key = str(chat_id)
+    existing = games.get(key)
+    if existing and existing["status"] not in ("ended",):
+        await context.bot.send_message(chat_id, "یه بازی «حدس بزن کی جاسوسه» همین الان در جریانه یا در حال ثبت‌نامه!")
+        return
+
+    game = {
+        "chat_id": key,
+        "status": "registering",
+        "players": {},   # uid -> {id, name}
+        "spy_id": None,
+        "word": None,
+        "clues": [],
+        "vote_tally": {},
+        "voters": set(),
+    }
+    games[key] = game
+
+    join_url = f"https://t.me/{bot_username}?start=join_{key}" if bot_username else None
+    markup = None
+    if join_url:
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton("🕵️ ورود به بازی", url=join_url)]])
+
+    await context.bot.send_message(
+        chat_id,
+        "🕵️ بازی «حدس بزن کی جاسوسه» شروع شد!\n"
+        "یه نفر جاسوس میشه و کلمه‌ی راز رو نمی‌دونه، بقیه کلمه رو تو پیوی می‌گیرن.\n\n"
+        f"برای پیوستن دکمه زیر رو بزن.\nحداقل {MIN_PLAYERS} نفر لازمه، {REGISTER_DURATION // 60} دقیقه وقت داری.",
+        reply_markup=markup,
+    )
+
+    context.job_queue.run_once(finish_registration_job, REGISTER_DURATION, data=key, name=f"reg_{key}")
+
+
+async def finish_registration_job(context: ContextTypes.DEFAULT_TYPE):
+    key = context.job.data
+    game = games.get(key)
+    if not game or game["status"] != "registering":
+        return
+    if len(game["players"]) < MIN_PLAYERS:
+        await context.bot.send_message(int(key), f"❌ فقط {len(game['players'])} نفر ثبت‌نام کردن، حداقل {MIN_PLAYERS} نفر لازمه. بازی لغو شد.")
+        del games[key]
+        return
+    context.application.create_task(run_round(context, key))
+
+
+async def handle_join_request(context, chat_key, user):
+    game = games.get(chat_key)
+    if not game or game["status"] != "registering":
+        await context.bot.send_message(user.id, "الان بازی‌ای برای پیوستن وجود نداره.")
+        return
+    if user.id in game["players"]:
+        await context.bot.send_message(user.id, "قبلاً ثبت‌نام کردی، منتظر شروع بازی باش.")
+        return
+    game["players"][user.id] = {"id": user.id, "name": user.first_name or "بازیکن"}
+    dm_context[user.id] = chat_key
+    await context.bot.send_message(user.id, f"✅ آماده شدی! (بازیکن {len(game['players'])}) — بعد شروع بازی، اینجا بهت خبر می‌دم.")
+    await context.bot.send_message(int(chat_key), f"🕵️ {user.first_name or 'یه نفر'} وارد بازی شد. ({len(game['players'])} نفر)")
+
+
+# ---------- اجرای کامل یک دور بازی ----------
+async def run_round(context, key):
+    game = games.get(key)
+    if not game:
+        return
+    game["status"] = "playing"
+
+    ids = list(game["players"].keys())
+    random.shuffle(ids)
+    spy_id = ids[0]
+    word = random.choice(WORDS)
+    game["spy_id"] = spy_id
+    game["word"] = word
+
+    for uid in ids:
+        name = game["players"][uid]["name"]
+        if uid == spy_id:
+            await context.bot.send_message(
+                uid,
+                "🕵️ تو جاسوسی!\nکلمه‌ی راز رو نمی‌دونی. با دقت به توصیف‌های بقیه گوش بده و "
+                "یه توصیف کلی و مبهم بفرست که لو نری. سعی کن حدس بزنی کلمه چیه.",
+            )
+        else:
+            await context.bot.send_message(
+                uid,
+                f"🔑 کلمه‌ی راز: «{word}»\nوقتی نوبتت شد، یه توصیف کوتاه درباره‌ی این کلمه بفرست "
+                "(بدون اینکه مستقیم اسمش رو بگی).",
+            )
+
+    await context.bot.send_message(
+        int(key),
+        f"🎬 نقش‌ها مشخص شد! به ترتیب هرکس نوبتش بشه، توصیفش رو تو پیوی برام می‌فرسته و همینجا نشون میدم.\n"
+        f"👥 ترتیب: {', '.join(game['players'][uid]['name'] for uid in ids)}",
+    )
+
+    game["clue_order"] = ids
+
+    for uid in ids:
+        name = game["players"][uid]["name"]
+        await context.bot.send_message(int(key), f"⏳ نوبت {name}...")
+        try:
+            await context.bot.send_message(uid, "✍️ نوبت توئه! یه توصیف کوتاه بفرست:")
+        except Exception:
+            pass
+
+        fut = asyncio.get_event_loop().create_future()
+        game["pending_clue_from"] = uid
+        game["pending_clue_future"] = fut
+        try:
+            clue = await asyncio.wait_for(fut, timeout=CLUE_TIMEOUT)
+        except asyncio.TimeoutError:
+            clue = "(چیزی نفرستاد)"
+        game["pending_clue_from"] = None
+        game["pending_clue_future"] = None
+
+        game["clues"].append((name, clue))
+        await context.bot.send_message(int(key), f"💬 {name}: {clue}")
+
+    await start_voting(context, key)
+
+
+async def start_voting(context, key):
+    game = games.get(key)
+    if not game:
+        return
+    game["status"] = "voting"
+    game["vote_tally"] = {}
+    game["voters"] = set()
+
+    buttons = [
+        [InlineKeyboardButton(f"🗳️ {p['name']}", callback_data=f"spyvote_{key}_{uid}")]
+        for uid, p in game["players"].items()
+    ]
+    await context.bot.send_message(
+        int(key),
+        f"🗳️ وقت رأی‌گیریه! کدوم‌تون فکر می‌کنید جاسوسه؟ ({VOTE_DURATION} ثانیه وقت دارید)",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+    context.job_queue.run_once(resolve_vote_job, VOTE_DURATION, data=key, name=f"vote_{key}")
+
+
+async def resolve_vote_job(context):
+    await resolve_vote(context, context.job.data)
+
+
+async def resolve_vote(context, key):
+    game = games.get(key)
+    if not game or game["status"] != "voting":
+        return
+    tally = game["vote_tally"]
+    max_votes = 0
+    winners = []
+    for uid, count in tally.items():
+        if count > max_votes:
+            max_votes = count
+            winners = [uid]
+        elif count == max_votes:
+            winners.append(uid)
+
+    spy_id = game["spy_id"]
+    spy_name = game["players"][spy_id]["name"]
+    word = game["word"]
+
+    if len(winners) == 1 and max_votes > 0 and winners[0] == spy_id:
+        await context.bot.send_message(
+            int(key),
+            f"🎯 درست حدس زدید! {spy_name} جاسوس بود.\n"
+            f"ولی جاسوس یه فرصت داره کلمه رو حدس بزنه تا برنده بشه...",
+        )
+        max_attempts = 2 if len(game["players"]) == 3 else 1
+        won_by_guess = False
+        for attempt in range(max_attempts):
+            remaining = max_attempts - attempt
+            try:
+                await context.bot.send_message(
+                    spy_id,
+                    f"🔮 کلمه‌ی راز رو حدس بزن! ({remaining} فرصت باقی مونده) فقط کلمه رو بفرست:",
+                )
+            except Exception:
+                pass
+            fut = asyncio.get_event_loop().create_future()
+            game["pending_clue_from"] = spy_id
+            game["pending_clue_future"] = fut
+            game["is_guess_phase"] = True
+            try:
+                guess = await asyncio.wait_for(fut, timeout=GUESS_TIMEOUT)
+            except asyncio.TimeoutError:
+                guess = ""
+            game["pending_clue_from"] = None
+            game["pending_clue_future"] = None
+            game["is_guess_phase"] = False
+
+            if normalize_text(guess) == normalize_text(word):
+                won_by_guess = True
+                break
+
+        if won_by_guess:
+            await context.bot.send_message(int(key), f"😈 {spy_name} کلمه رو درست حدس زد! جاسوس بردددد.\n🔑 کلمه: {word}")
+        else:
+            await context.bot.send_message(int(key), f"🎉 {spy_name} نتونست کلمه رو حدس بزنه. شهروندان بردن!\n🔑 کلمه: {word}")
+    else:
+        who = ", ".join(game["players"][w]["name"] for w in winners) if winners else "هیچ‌کس"
+        await context.bot.send_message(
+            int(key),
+            f"❌ رأی‌گیری اشتباه بود (رأی بیشتر به: {who})! جاسوس واقعی {spy_name} بود.\n"
+            f"😈 جاسوس بدون اینکه لو بره برد!\n🔑 کلمه: {word}",
+        )
+
+    games.pop(key, None)
+
+
+async def handle_join_registration(context, chat_key, user):
+    await handle_join_request(context, chat_key, user)
+
+
+# ---------- هندلر پیام گروه ----------
+async def on_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+    text = normalize_text(update.message.text)
+    if text in TRIGGER_PHRASES:
+        await start_registration(context, update.effective_chat.id)
+
+
+# ---------- /start ----------
+async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type != "private":
+        return
+    args = context.args
+    if args and args[0].startswith("join_"):
+        chat_key = args[0][len("join_"):]
+        await handle_join_request(context, chat_key, update.effective_user)
+    else:
+        await update.message.reply_text("سلام! برای بازی «حدس بزن کی جاسوسه» تو گروه بنویس: جاسوس")
+
+
+# ---------- پیام‌های پیوی (توصیف‌ها و حدس‌ها) ----------
+async def on_private_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+    user_id = update.effective_user.id
+    chat_key = dm_context.get(user_id)
+    if not chat_key:
+        return
+    game = games.get(chat_key)
+    if not game:
+        return
+
+    if game.get("pending_clue_from") == user_id and game.get("pending_clue_future") and not game["pending_clue_future"].done():
+        game["pending_clue_future"].set_result(update.message.text.strip())
+
+
+# ---------- دکمه‌های رأی‌گیری ----------
+async def on_vote_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    rest = query.data[len("spyvote_"):]
+    chat_key, target_id_str = rest.rsplit("_", 1)
+    target_id = int(target_id_str)
+    game = games.get(chat_key)
+    if not game or game["status"] != "voting":
+        await query.answer("الان وقت رأی‌گیری نیست.")
+        return
+    voter_id = query.from_user.id
+    if voter_id not in game["players"]:
+        await query.answer("شما تو این بازی نیستی.")
+        return
+    if voter_id in game["voters"]:
+        await query.answer("قبلاً رأی دادی!")
+        return
+    game["voters"].add(voter_id)
+    game["vote_tally"][target_id] = game["vote_tally"].get(target_id, 0) + 1
+    target_name = game["players"].get(target_id, {}).get("name", "؟")
+    await query.answer(f"✅ رأیت برای {target_name} ثبت شد!")
+
+
+async def post_init(application):
+    global bot_username
+    me = await application.bot.get_me()
+    bot_username = me.username
+    print("Bot username:", bot_username)
+
+
+def main():
+    if not BOT_TOKEN:
+        print("BOT_TOKEN not set — bot disabled.")
+        import time
+        while True:
+            time.sleep(60)
+
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+
+    app.add_handler(CommandHandler("start", on_start))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS & ~filters.COMMAND, on_group_message))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, on_private_message))
+    app.add_handler(CallbackQueryHandler(on_vote_callback, pattern=r"^spyvote_"))
+
+    print("Spy game bot polling started")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
