@@ -12,7 +12,7 @@ import time
 import json
 import os
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
+BOT_TOKEN = "7741604061:AAHbTYwZCKEvDlRm71SEj2EY3khVExQFQ1g"
 
 USD_PRICE = 83750
 MAX_USD = 200
@@ -410,7 +410,8 @@ async def info_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(info_text)
 
 # بارگذاری اولیه‌ی عکس‌ها در حافظه (مسیر مطلق نسبت به خود فایل، نه پوشه‌ی اجرا)
-ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+# نکته: عکس‌ها مستقیم کنار hat_bot.py هستن (نه داخل پوشه‌ی assets)
+ASSETS_DIR = BASE_DIR
 
 
 def _load_asset_safe(filename):
