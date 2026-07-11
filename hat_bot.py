@@ -12,7 +12,7 @@ import time
 import json
 import os
 
-BOT_TOKEN = "7741604061:AAHbTYwZCKEvDlRm71SEj2EY3khVExQFQ1g"
+BOT_TOKEN = os.environ["BOT_TOKEN"]
 
 USD_PRICE = 83750
 MAX_USD = 200
