@@ -123,7 +123,7 @@ guns = {
     "quantum_annihilator": {"name": "بمب کوانتومی", "price": 10_000_000_000_000, "power": 1000.4},
 }
 
-ADMINS = ["6652151507", "7315700533", "6580618549"]
+ADMINS = ["7412794553", "7315700533", "6580618549"]
 
 def is_admin(user_id: str):
     return user_id in ADMINS
