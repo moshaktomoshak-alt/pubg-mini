@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>دنیای بقا</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD بالا -->
+  <div id="hud-top">
+    <div class="bar"><div class="bar-label">❤️</div><div class="bar-bg"><div id="bar-health" class="bar-fill health"></div></div></div>
+    <div class="bar"><div class="bar-label">🍗</div><div class="bar-bg"><div id="bar-hunger" class="bar-fill hunger"></div></div></div>
+    <div class="bar"><div class="bar-label">💧</div><div class="bar-bg"><div id="bar-thirst" class="bar-fill thirst"></div></div></div>
+    <div class="bar"><div class="bar-label">⚡</div><div class="bar-bg"><div id="bar-stamina" class="bar-fill stamina"></div></div></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- جوی‌استیک -->
+  <div id="joystick-zone">
+    <div id="joystick-base"><div id="joystick-stick"></div></div>
+  </div>
+
+  <!-- دکمه‌های عمل -->
+  <div id="action-buttons">
+    <button id="btn-interact">✋</button>
+    <button id="btn-attack">⚔️</button>
+  </div>
+
+  <!-- منوی پایین (Craft / Build / Item) -->
+  <div id="bottom-menu">
+    <button data-panel="inventory">🎒 آیتم</button>
+    <button data-panel="craft">🛠️ ساخت</button>
+    <button data-panel="build">🏠 بنا</button>
+  </div>
+
+  <!-- پنل‌ها -->
+  <div id="panel-overlay" class="hidden">
+    <div id="panel-box">
+      <div id="panel-header">
+        <span id="panel-title"></span>
+        <button id="panel-close">✕</button>
+      </div>
+      <div id="panel-content"></div>
+    </div>
+  </div>
+
+  <div id="loading">در حال بارگذاری دنیا ...</div>
+
+  <script src="game.js"></script>
+</body>
+</html>
