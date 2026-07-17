@@ -164,11 +164,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def run_bot():
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", cmd_start))
     print("بات بازی بقا روشن شد ...")
     application.run_polling(stop_signals=None, close_loop=False)
-
 
 # ==================== main ====================
 
