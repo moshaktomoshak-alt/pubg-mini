@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 بات مستقل Mini App بازی بقا (Survival Top-Down)
-- سرور Flask که هم صفحه بازی (Mini App) رو serve می‌کنه هم API ذخیره/بارگذاری وضعیت بازیکن رو داره
-- بات تلگرام (polling) که با دستور /start دکمه‌ی باز کردن بازی رو می‌فرسته
+- سرور Flask که هم صفحه بازی (Mini App) رو serve می‌کنه هم API ذخیره/بارگذاری/ریست وضعیت بازیکن رو داره
+- بات تلگرام (polling) که با /start یا کلمه‌ی "بقا" دکمه‌ی بازی رو می‌فرسته
+- دکمه‌ی منوی چت (کنار کیبورد) هم مستقیم بازی رو باز می‌کنه
 
 نصب:
     pip install flask "python-telegram-bot==21.4" --break-system-packages
@@ -13,7 +14,6 @@
 متغیرهای محیطی لازم (تو Railway تحت Variables ست کن):
     BOT_TOKEN   -> توکن باتی که از BotFather گرفتی
     WEBAPP_URL  -> آدرس عمومی همین سرویس روی Railway (مثلا https://xxx.up.railway.app)
-                   (بعد از اولین دیپلوی، آدرس رو از Railway کپی کن و اینجا ست کن)
 """
 
 import os
@@ -26,8 +26,10 @@ import urllib.parse
 
 from flask import Flask, request, jsonify, send_from_directory
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import (
+    InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Update, MenuButtonWebApp,
+)
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 # ==================== تنظیمات ====================
 
@@ -83,7 +85,7 @@ def user_file(user_id: int) -> str:
 def default_state(user_id: int) -> dict:
     return {
         "userId": user_id,
-        "worldSeed": (user_id * 9301 + 49297) % 233280,
+        "worldSeed": int(time.time() * 1000 + user_id) % 233280,
         "player": {
             "x": 0, "y": 0,
             "health": 100, "hunger": 100, "thirst": 100, "stamina": 100,
@@ -94,6 +96,12 @@ def default_state(user_id: int) -> dict:
         "modifications": {},   # چانک‌های برداشت‌شده / سازه‌های ساخته‌شده
         "updatedAt": time.time(),
     }
+
+
+def save_state_to_disk(uid: int, state: dict):
+    with _save_lock:
+        with open(user_file(uid), "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False)
 
 
 # ==================== مسیرهای وب (Mini App) ====================
@@ -117,6 +125,7 @@ def api_load():
             state = json.load(f)
     else:
         state = default_state(uid)
+        save_state_to_disk(uid, state)
 
     return jsonify({"ok": True, "state": state, "firstName": user.get("first_name", "")})
 
@@ -135,17 +144,28 @@ def api_save():
 
     state["userId"] = uid
     state["updatedAt"] = time.time()
-
-    with _save_lock:
-        with open(user_file(uid), "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False)
+    save_state_to_disk(uid, state)
 
     return jsonify({"ok": True})
 
 
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    """وقتی کاراکتر می‌میره صدا زده می‌شه: یه دنیای کاملاً تازه برای بازیکن می‌سازه."""
+    body = request.get_json(force=True, silent=True) or {}
+    user = validate_init_data(body.get("initData", ""))
+    if not user:
+        return jsonify({"ok": False, "error": "invalid_init_data"}), 401
+
+    uid = user["id"]
+    fresh = default_state(uid)
+    save_state_to_disk(uid, fresh)
+    return jsonify({"ok": True, "state": fresh})
+
+
 # ==================== بات تلگرام ====================
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def send_game_button(update: Update):
     if not WEBAPP_URL:
         await update.message.reply_text(
             "⚠️ آدرس بازی هنوز تنظیم نشده. اول WEBAPP_URL رو تو تنظیمات سرویس ست کن."
@@ -163,15 +183,46 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await send_game_button(update)
+
+
+async def on_keyword_bagha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message and update.message.text:
+        await send_game_button(update)
+
+
+async def set_menu_button(application: Application):
+    """دکمه‌ی کنار کیبورد چت رو مستقیم به بازی وصل می‌کنه (مثل بقیه بات‌ها)."""
+    if not WEBAPP_URL:
+        return
+    try:
+        await application.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="🎮 بازی", web_app=WebAppInfo(url=WEBAPP_URL))
+        )
+        print("دکمه‌ی منو تنظیم شد.")
+    except Exception as e:
+        print("خطا در تنظیم دکمه‌ی منو:", e)
+
+
 def run_bot():
     import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .post_init(set_menu_button)
+        .build()
+    )
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(
+        MessageHandler(filters.Regex(r"بقا") & filters.TEXT & ~filters.COMMAND, on_keyword_bagha)
+    )
     print("بات بازی بقا روشن شد ...")
     application.run_polling(stop_signals=None, close_loop=False)
+
 
 # ==================== main ====================
 
