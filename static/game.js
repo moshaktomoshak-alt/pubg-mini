@@ -55,6 +55,7 @@ let lastZombieSpawn = 0;
 let interactTarget = null;
 let placeMode = null;  // نوع سازه‌ای که در حال جاگذاریشیم
 let inCar = false;
+let isDead = false;    // موقع مرگ و ریست دنیا true می‌شه
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -78,7 +79,7 @@ function tileResource(tx, ty, seed) {
 
 function modKey(tx, ty) { return tx + "_" + ty; }
 
-// ==================== بارگذاری / ذخیره ====================
+// ==================== بارگذاری / ذخیره / ریست ====================
 async function loadState() {
   try {
     const res = await fetch("/api/load", {
@@ -89,7 +90,11 @@ async function loadState() {
     if (data.ok) { state = data.state; return; }
   } catch (e) { /* fallback زیر */ }
   // حالت آزمایشی بدون تلگرام (برای تست در مرورگر معمولی)
-  state = {
+  state = freshLocalState();
+}
+
+function freshLocalState() {
+  return {
     worldSeed: Math.floor(Math.random() * 100000),
     player: { x: 0, y: 0, health: 100, hunger: 100, thirst: 100, stamina: 100 },
     inventory: {}, equipped: null, car: { repaired: false, fuel: 0 }, modifications: {},
@@ -98,11 +103,44 @@ async function loadState() {
 
 let saveTimer = 0;
 function saveState() {
-  if (!initData) return; // فقط داخل تلگرام سیو می‌کنیم
+  if (!initData || isDead) return; // فقط داخل تلگرام و وقتی زنده‌ایم سیو می‌کنیم
   fetch("/api/save", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData, state }),
   }).catch(() => {});
+}
+
+async function onDeath() {
+  if (isDead) return;
+  isDead = true;
+  zombies = [];
+  placeMode = null;
+  inCar = false;
+
+  const loadingEl = document.getElementById("loading");
+  loadingEl.textContent = "💀 مُردی... دنیای جدیدی در حال ساخته شدنه";
+  loadingEl.style.display = "flex";
+
+  if (initData) {
+    try {
+      const res = await fetch("/api/reset", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+      });
+      const data = await res.json();
+      if (data.ok) state = data.state;
+      else state = freshLocalState();
+    } catch (e) {
+      state = freshLocalState();
+    }
+  } else {
+    state = freshLocalState();
+  }
+
+  setTimeout(() => {
+    loadingEl.style.display = "none";
+    isDead = false;
+  }, 1600);
 }
 
 // ==================== جوی‌استیک ====================
@@ -159,7 +197,7 @@ function screenToWorld(sx, sy) {
 }
 
 function onTapScreen(sx, sy) {
-  if (!state) return;
+  if (!state || isDead) return;
   const w = screenToWorld(sx, sy);
   if (placeMode) { tryPlace(w.x, w.y); return; }
 }
@@ -176,6 +214,7 @@ document.getElementById("panel-close").addEventListener("click", closePanel);
 function closePanel() { document.getElementById("panel-overlay").classList.add("hidden"); }
 
 function openPanel(kind) {
+  if (isDead) return;
   const overlay = document.getElementById("panel-overlay");
   const title = document.getElementById("panel-title");
   const content = document.getElementById("panel-content");
@@ -298,7 +337,7 @@ function nearestResource() {
 }
 
 function doInteract() {
-  if (!state) return;
+  if (!state || isDead) return;
   const carDist = Math.hypot(CAR_WORLD_X - state.player.x, CAR_WORLD_Y - state.player.y);
   if (carDist < INTERACT_RANGE + 20) { interactCar(); return; }
 
@@ -339,7 +378,7 @@ function interactCar() {
 }
 
 function doAttack() {
-  if (!state) return;
+  if (!state || isDead) return;
   let target = null, bestD = 60;
   for (const z of zombies) {
     const d = Math.hypot(z.x - state.player.x, z.y - state.player.y);
@@ -404,6 +443,8 @@ function updatePlayer(dt) {
   p.thirst = Math.max(0, p.thirst - dt * 0.015);
   if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
   p.health = Math.min(100, p.health);
+
+  if (p.health <= 0 && !isDead) onDeath();
 }
 
 // ==================== دوربین و رندر ====================
@@ -496,7 +537,7 @@ function loop() {
   const dt = Math.min(2.2, (now - lastTime) / 16.67);
   lastTime = now;
 
-  if (state) {
+  if (state && !isDead) {
     updatePlayer(dt);
     updateZombies(dt);
     drawWorld();
@@ -507,13 +548,15 @@ function loop() {
 
     saveTimer += dt;
     if (saveTimer > 300) { saveTimer = 0; saveState(); }
+  } else if (state && isDead) {
+    updateHUD();
   }
   requestAnimationFrame(loop);
 }
 
 function updateHUD() {
   const p = state.player;
-  document.getElementById("bar-health").style.width = p.health + "%";
+  document.getElementById("bar-health").style.width = Math.max(0, p.health) + "%";
   document.getElementById("bar-hunger").style.width = p.hunger + "%";
   document.getElementById("bar-thirst").style.width = p.thirst + "%";
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
