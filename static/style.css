@@ -122,10 +122,16 @@ html, body {
 .item-row button:disabled { background: #555; opacity: .6; }
 
 
-#btn-help {
-  pointer-events: auto;
+#hud-left-buttons {
+  display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; pointer-events: auto;
+}
+
+#btn-help, #btn-gps {
   width: 26px; height: 26px; border-radius: 50%; border: none;
-  background: rgba(0,0,0,.5); color: #fff; font-size: 13px; flex: 0 0 auto;
+  background: rgba(0,0,0,.5); color: #fff; font-size: 13px;
+}
+#btn-gps.active {
+  background: #e05353; box-shadow: 0 0 0 3px rgba(224,83,83,.4);
 }
 
 .help-item {
