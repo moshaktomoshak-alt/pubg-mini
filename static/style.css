@@ -11,13 +11,23 @@ html, body {
   font-size: 18px; z-index: 999;
 }
 
+#rotate-prompt {
+  display: none;
+  position: fixed; inset: 0; background: #111; color: #fff; z-index: 9998;
+  align-items: center; justify-content: center; text-align: center;
+  font-size: 20px; line-height: 1.8; padding: 20px;
+}
+@media (orientation: portrait) {
+  #rotate-prompt { display: flex; }
+}
+
 #hud-top {
-  position: absolute; top: 8px; right: 8px; left: 8px;
+  position: absolute; top: 6px; right: 8px; left: 8px;
   display: flex; gap: 6px; z-index: 20; pointer-events: none;
 }
-.bar { flex: 1; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,.45); border-radius: 8px; padding: 3px 6px; }
-.bar-label { font-size: 13px; }
-.bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,.25); border-radius: 5px; overflow: hidden; }
+.bar { flex: 1; max-width: 190px; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,.45); border-radius: 8px; padding: 3px 6px; }
+.bar-label { font-size: 12px; }
+.bar-bg { flex: 1; height: 7px; background: rgba(255,255,255,.25); border-radius: 5px; overflow: hidden; }
 .bar-fill { height: 100%; width: 100%; transition: width .25s; }
 .bar-fill.health { background: #e05353; }
 .bar-fill.hunger { background: #d9a441; }
@@ -25,53 +35,76 @@ html, body {
 .bar-fill.stamina { background: #58c46b; }
 
 #toast {
-  position: absolute; top: 54px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,.65); color: #fff; padding: 6px 14px; border-radius: 8px;
-  font-size: 13px; z-index: 25; opacity: 0; transition: opacity .3s; pointer-events: none;
+  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.65); color: #fff; padding: 5px 12px; border-radius: 8px;
+  font-size: 12px; z-index: 25; opacity: 0; transition: opacity .3s; pointer-events: none;
   white-space: nowrap;
 }
 #toast.show { opacity: 1; }
 
+#range-label {
+  position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.5); color: #fff; padding: 4px 10px; border-radius: 8px;
+  font-size: 12px; z-index: 25; opacity: 0; transition: opacity .2s; pointer-events: none;
+  white-space: nowrap;
+}
+#range-label.show { opacity: 1; }
+
+/* جوی‌استیک حرکت - چپ */
 #joystick-zone {
-  position: absolute; left: 20px; bottom: 24px; width: 130px; height: 130px; z-index: 20;
+  position: absolute; left: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
 }
 #joystick-base {
-  width: 130px; height: 130px; border-radius: 50%;
+  width: 108px; height: 108px; border-radius: 50%;
   background: rgba(255,255,255,.15); border: 2px solid rgba(255,255,255,.35);
   position: relative;
 }
 #joystick-stick {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 46px; height: 46px; border-radius: 50%;
   background: rgba(255,255,255,.55);
-  position: absolute; left: 37px; top: 37px;
+  position: absolute; left: 31px; top: 31px;
+}
+
+/* جوی‌استیک هدف‌گیری - راست */
+#aim-zone {
+  position: absolute; right: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
+}
+#aim-base {
+  width: 108px; height: 108px; border-radius: 50%;
+  background: rgba(224,83,83,.15); border: 2px solid rgba(224,83,83,.45);
+  position: relative;
+}
+#aim-stick {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(224,83,83,.65);
+  position: absolute; left: 31px; top: 31px;
 }
 
 #action-buttons {
-  position: absolute; right: 20px; bottom: 24px; z-index: 20;
-  display: flex; flex-direction: column; gap: 12px;
+  position: absolute; right: 22px; bottom: 132px; z-index: 20;
 }
 #action-buttons button {
-  width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4);
-  background: rgba(0,0,0,.4); color: #fff; font-size: 24px;
+  width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4);
+  background: rgba(0,0,0,.4); color: #fff; font-size: 20px;
 }
 
 #bottom-menu {
-  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
   display: flex; gap: 8px; z-index: 20;
 }
 #bottom-menu button {
   background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(255,255,255,.3);
-  border-radius: 10px; padding: 8px 12px; font-size: 13px;
+  border-radius: 10px; padding: 6px 10px; font-size: 12px;
 }
 
 #panel-overlay {
   position: absolute; inset: 0; background: rgba(0,0,0,.55); z-index: 40;
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
 #panel-overlay.hidden { display: none; }
 #panel-box {
-  width: 100%; max-width: 480px; max-height: 62%; background: #1e1e1e; color: #eee;
-  border-radius: 16px 16px 0 0; padding: 10px 12px 16px; overflow-y: auto;
+  width: 92%; max-width: 480px; max-height: 82%; background: #1e1e1e; color: #eee;
+  border-radius: 16px; padding: 10px 12px 16px; overflow-y: auto;
 }
 #panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 #panel-title { font-size: 15px; font-weight: bold; }
