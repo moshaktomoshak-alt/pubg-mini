@@ -107,7 +107,7 @@ def default_state(user_id: int) -> dict:
         },
         "inventory": {},
         "equipped": None,
-        "car": {"repaired": False, "fuel": 0},
+        "car": {"repaired": False, "fuel": 0, "health": 100},
         "modifications": {},   # چانک‌های برداشت‌شده / سازه‌های ساخته‌شده
         "guideSeen": False,
         "updatedAt": time.time(),
