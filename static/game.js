@@ -34,6 +34,12 @@ const ITEM_FA = {
   wall: "دیوار", floor: "کف", door: "در", engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
 };
 
+// رنج (برد) حمله برای هرکدوم از ابزار/سلاح‌ها - بر حسب پیکسل دنیا
+const WEAPON_RANGE = { fists: 45, knife: 60, axe: 70, pick: 65, wrench: 55 };
+const WEAPON_DAMAGE = { fists: 12, knife: 35, axe: 25, pick: 20, wrench: 15 };
+const ATTACK_CONE_DEG = 55;      // زاویه‌ی مخروط حمله (نیمه‌زاویه از هر طرف جهت نشونه)
+const ATTACK_INTERVAL_MS = 550;  // فاصله بین هر ضربه وقتی آنالوگ هدف‌گیری نگه‌داشته شده
+
 const INTERACT_RANGE = 55;
 const ZOMBIE_SPEED = 1.1;
 const PLAYER_SPEED = 2.6;
@@ -57,6 +63,7 @@ const IMG_SRC = {
   grass2: "data:image/png;base64,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",
   grass3: "data:image/png;base64,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",
 };
+
 const IMG = {};
 for (const [key, src] of Object.entries(IMG_SRC)) {
   const im = new Image();
@@ -75,10 +82,36 @@ function drawImageCentered(im, x, y, targetH) {
   return true;
 }
 
+// چرخوندن اسپرایت به سمت یک زاویه. اسپرایت‌های پیش‌فرض کنی رو به پایین (جنوب) هستن،
+// یعنی زاویه‌ی پایه‌شون معادل Math.PI/2 در مختصات atan2 است.
+function drawImageRotated(im, x, y, targetH, angle) {
+  if (!imgReady(im)) return false;
+  const scale = targetH / im.naturalHeight;
+  const w = im.naturalWidth * scale;
+  const h = im.naturalHeight * scale;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle - Math.PI / 2);
+  ctx.drawImage(im, -w / 2, -h / 2, w, h);
+  ctx.restore();
+  return true;
+}
+
+// ==================== Telegram WebApp ====================
 const tg = window.Telegram ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) {
+  tg.ready();
+  tg.expand();
+  try { if (tg.lockOrientation) tg.lockOrientation(); } catch (e) {}
+}
+try {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("landscape").catch(() => {});
+  }
+} catch (e) {}
 const initData = tg ? tg.initData : "";
 
+// ==================== وضعیت بازی ====================
 let state = null;
 let zombies = [];
 let lastZombieSpawn = 0;
@@ -86,12 +119,17 @@ let placeMode = null;
 let inCar = false;
 let isDead = false;
 
+let playerFacing = Math.PI / 2; // جهت فعلی که کاراکتر به سمتش نگاه می‌کنه (پیش‌فرض: رو به پایین)
+let isAiming = false;
+let lastAttackTime = 0;
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
 addEventListener("resize", resize);
 resize();
 
+// ==================== تصادفی قطعی (Deterministic) ====================
 function hash2(x, y, seed) {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
   return n - Math.floor(n);
@@ -112,6 +150,7 @@ function pickVariant(list, tx, ty, seed) {
 
 function modKey(tx, ty) { return tx + "_" + ty; }
 
+// ==================== بارگذاری / ذخیره / ریست ====================
 async function loadState() {
   try {
     const res = await fetch("/api/load", {
@@ -173,25 +212,25 @@ async function onDeath() {
   }, 1600);
 }
 
-let joyVec = { x: 0, y: 0 };
-(function setupJoystick() {
-  const zone = document.getElementById("joystick-zone");
-  const stick = document.getElementById("joystick-stick");
+// ==================== جوی‌استیک عمومی (برای حرکت و هدف‌گیری) ====================
+function setupStick(zoneId, stickId, onMove, onRelease) {
+  const zone = document.getElementById(zoneId);
+  const stick = document.getElementById(stickId);
   let active = false, startX = 0, startY = 0, touchId = null;
-  const MAX = 45;
+  const MAX = 31;
 
   function move(clientX, clientY) {
     let dx = clientX - startX, dy = clientY - startY;
     const dist = Math.hypot(dx, dy);
     if (dist > MAX) { dx = dx / dist * MAX; dy = dy / dist * MAX; }
-    stick.style.left = 37 + dx + "px";
-    stick.style.top = 37 + dy + "px";
-    joyVec.x = dx / MAX; joyVec.y = dy / MAX;
+    stick.style.left = 31 + dx + "px";
+    stick.style.top = 31 + dy + "px";
+    onMove(dx / MAX, dy / MAX);
   }
   function reset() {
     active = false; touchId = null;
-    stick.style.left = "37px"; stick.style.top = "37px";
-    joyVec.x = 0; joyVec.y = 0;
+    stick.style.left = "31px"; stick.style.top = "31px";
+    onRelease();
   }
   zone.addEventListener("touchstart", (e) => {
     const t = e.changedTouches[0];
@@ -208,9 +247,22 @@ let joyVec = { x: 0, y: 0 };
 
   zone.addEventListener("mousedown", (e) => { active = true; startX = e.clientX; startY = e.clientY; });
   addEventListener("mousemove", (e) => { if (active) move(e.clientX, e.clientY); });
-  addEventListener("mouseup", reset);
-})();
+  addEventListener("mouseup", () => { if (active) reset(); });
+}
 
+let joyVec = { x: 0, y: 0 };
+setupStick("joystick-zone", "joystick-stick",
+  (x, y) => { joyVec.x = x; joyVec.y = y; },
+  () => { joyVec.x = 0; joyVec.y = 0; }
+);
+
+let aimVec = { x: 0, y: 0 };
+setupStick("aim-zone", "aim-stick",
+  (x, y) => { aimVec.x = x; aimVec.y = y; if (Math.hypot(x, y) > 0.2) isAiming = true; },
+  () => { aimVec.x = 0; aimVec.y = 0; isAiming = false; }
+);
+
+// ==================== تعامل با تپ روی صحنه (جاگذاری سازه) ====================
 canvas.addEventListener("click", (e) => onTapScreen(e.clientX, e.clientY));
 canvas.addEventListener("touchstart", (e) => {
   if (e.target !== canvas) return;
@@ -230,8 +282,8 @@ function onTapScreen(sx, sy) {
 }
 
 document.getElementById("btn-interact").addEventListener("click", doInteract);
-document.getElementById("btn-attack").addEventListener("click", doAttack);
 
+// ==================== منوها ====================
 document.querySelectorAll("#bottom-menu button").forEach((btn) => {
   btn.addEventListener("click", () => openPanel(btn.dataset.panel));
 });
@@ -256,7 +308,8 @@ function openPanel(kind) {
       const row = document.createElement("div");
       row.className = "item-row";
       const equippable = ["axe", "pick", "knife", "wrench"].includes(k);
-      row.innerHTML = `<span class="name">${ITEM_FA[k] || k} ×${inv[k]}</span>`;
+      const rangeTxt = equippable ? ` (برد ${WEAPON_RANGE[k]})` : "";
+      row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
         const b = document.createElement("button");
         b.textContent = state.equipped === k ? "مجهز شده" : "استفاده";
@@ -321,6 +374,7 @@ function consumeItem(k) {
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
 }
 
+// ==================== toast ====================
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -329,6 +383,7 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
 }
 
+// ==================== جاگذاری سازه ====================
 function tryPlace(wx, wy) {
   const tx = Math.round(wx / TILE), ty = Math.round(wy / TILE);
   const dist = Math.hypot(wx - state.player.x, wy - state.player.y);
@@ -342,6 +397,7 @@ function tryPlace(wx, wy) {
   placeMode = null;
 }
 
+// ==================== تعامل نزدیک (منابع/ماشین) ====================
 function nearestResource() {
   const px = state.player.x, py = state.player.y;
   const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
@@ -400,24 +456,39 @@ function interactCar() {
   toast(inCar ? "سوار ماشین شدی 🚗" : "پیاده شدی");
 }
 
-function doAttack() {
-  if (!state || isDead) return;
-  let target = null, bestD = 60;
+// ==================== حمله‌ی مبتنی بر جهت (آنالوگ راست) ====================
+function currentWeaponKey() {
+  return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
+}
+
+function angleDiffDeg(a, b) {
+  let d = (a - b) * 180 / Math.PI;
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return Math.abs(d);
+}
+
+function performAimedAttack() {
+  const range = WEAPON_RANGE[currentWeaponKey()];
+  const dmg = WEAPON_DAMAGE[currentWeaponKey()];
+  let target = null, bestD = Infinity;
   for (const z of zombies) {
-    const d = Math.hypot(z.x - state.player.x, z.y - state.player.y);
+    const dx = z.x - state.player.x, dy = z.y - state.player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > range) continue;
+    const ang = Math.atan2(dy, dx);
+    if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
     if (d < bestD) { bestD = d; target = z; }
   }
-  if (!target) { toast("چیزی نزدیک نیست"); return; }
-  const dmg = { knife: 35, axe: 25, pick: 20 }[state.equipped] || 12;
+  if (!target) return;
   target.hp -= dmg;
   if (target.hp <= 0) {
     zombies = zombies.filter((z) => z !== target);
     toast("زامبی نابود شد 💀");
-  } else {
-    toast("ضربه زدی!");
   }
 }
 
+// ==================== زامبی‌ها ====================
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
   const ang = Math.random() * Math.PI * 2;
@@ -426,6 +497,7 @@ function spawnZombie() {
     x: state.player.x + Math.cos(ang) * dist,
     y: state.player.y + Math.sin(ang) * dist,
     hp: 60,
+    facing: 0,
   });
 }
 
@@ -435,6 +507,7 @@ function updateZombies(dt) {
   for (const z of zombies) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
+    z.facing = Math.atan2(dy, dx);
     z.x += (dx / d) * ZOMBIE_SPEED * dt;
     z.y += (dy / d) * ZOMBIE_SPEED * dt;
     if (d < 26) {
@@ -443,10 +516,14 @@ function updateZombies(dt) {
   }
 }
 
+// ==================== حرکت و جهت بازیکن ====================
 function updatePlayer(dt) {
   const p = state.player;
+  const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
+  const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
+
   const speed = (inCar ? PLAYER_SPEED * 3.4 : PLAYER_SPEED) * (state.player.stamina > 0 ? 1 : 0.5);
-  if (Math.hypot(joyVec.x, joyVec.y) > 0.15) {
+  if (moving) {
     p.x += joyVec.x * speed * dt;
     p.y += joyVec.y * speed * dt;
     if (inCar) {
@@ -459,6 +536,23 @@ function updatePlayer(dt) {
     state.player.stamina = Math.min(100, state.player.stamina + dt * 0.05);
   }
 
+  // جهت: اگه داره هدف می‌گیره، جهت هدف‌گیری اولویت داره (مثل براول استارز)؛
+  // وگرنه اگه داره حرکت می‌کنه، به سمت حرکت نگاه می‌کنه.
+  if (aiming) {
+    playerFacing = Math.atan2(aimVec.y, aimVec.x);
+  } else if (moving) {
+    playerFacing = Math.atan2(joyVec.y, joyVec.x);
+  }
+
+  // حمله‌ی خودکار وقتی آنالوگ هدف‌گیری نگه داشته شده
+  if (aiming) {
+    const now = performance.now();
+    if (now - lastAttackTime > ATTACK_INTERVAL_MS) {
+      lastAttackTime = now;
+      performAimedAttack();
+    }
+  }
+
   p.hunger = Math.max(0, p.hunger - dt * 0.01);
   p.thirst = Math.max(0, p.thirst - dt * 0.015);
   if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
@@ -467,6 +561,7 @@ function updatePlayer(dt) {
   if (p.health <= 0 && !isDead) onDeath();
 }
 
+// ==================== دوربین و رندر ====================
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
 
 function worldToScreen(wx, wy) {
@@ -552,7 +647,7 @@ function drawCar() {
 function drawZombies() {
   for (const z of zombies) {
     const s = worldToScreen(z.x, z.y);
-    const drawn = drawImageCentered(IMG.zombie, s.x, s.y, 30);
+    const drawn = drawImageRotated(IMG.zombie, s.x, s.y, 30, z.facing || 0);
     if (!drawn) {
       ctx.fillStyle = "#3f8f4a";
       ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, Math.PI * 2); ctx.fill();
@@ -563,18 +658,42 @@ function drawZombies() {
 
 function drawPlayer() {
   const s = { x: canvas.width / 2, y: canvas.height / 2 };
-  const drawn = drawImageCentered(IMG.player, s.x, s.y, 32);
+
+  // نمایش رنج حمله وقتی داره هدف می‌گیره
+  const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
+  if (aiming) {
+    const range = WEAPON_RANGE[currentWeaponKey()];
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(playerFacing);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    const coneRad = ATTACK_CONE_DEG * Math.PI / 180;
+    ctx.arc(0, 0, range, -coneRad, coneRad);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(224,83,83,0.22)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(224,83,83,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    const label = document.getElementById("range-label");
+    label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
+    label.classList.add("show");
+  } else {
+    document.getElementById("range-label").classList.remove("show");
+  }
+
+  const drawn = drawImageRotated(IMG.player, s.x, s.y, 32, playerFacing);
   if (!drawn) {
     ctx.fillStyle = inCar ? "#d9a441" : "#e8c07a";
     ctx.beginPath(); ctx.arc(s.x, s.y, 14, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#3b2a17"; ctx.lineWidth = 2; ctx.stroke();
   }
-  if (state.equipped) {
-    ctx.fillStyle = "#fff"; ctx.font = "11px Tahoma"; ctx.textAlign = "center";
-    ctx.fillText(ITEM_FA[state.equipped], s.x, s.y - 26);
-  }
 }
 
+// ==================== حلقه اصلی ====================
 let lastTime = performance.now();
 function loop() {
   const now = performance.now();
@@ -606,6 +725,7 @@ function updateHUD() {
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
 }
 
+// ==================== شروع ====================
 (async function init() {
   await loadState();
   document.getElementById("loading").style.display = "none";
