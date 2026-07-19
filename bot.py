@@ -3,6 +3,7 @@
 بات مستقل Mini App بازی بقا (Survival Top-Down)
 - سرور Flask که هم صفحه بازی (Mini App) رو serve می‌کنه هم API ذخیره/بارگذاری/ریست وضعیت بازیکن رو داره
 - بات تلگرام (polling) که با /start یا کلمه‌ی "بقا" دکمه‌ی بازی رو می‌فرسته
+- دستور /help یا کلمه‌ی "راهنما" راهنمای بازی رو می‌فرسته (تو گروه و پیوی)
 - دکمه‌ی منوی چت (کنار کیبورد) هم مستقیم بازی رو باز می‌کنه
 
 نصب:
@@ -45,6 +46,20 @@ os.makedirs(DATA_DIR, exist_ok=True)
 _save_lock = threading.Lock()
 
 app = Flask(__name__, static_folder="static", static_url_path="")
+
+HELP_TEXT = (
+    "📖 راهنمای دنیای بقا\n\n"
+    "🕹️ کنترل‌ها:\n"
+    "• آنالوگ چپ: حرکت\n"
+    "• آنالوگ راست (قرمز): نشونه‌گیری و حمله (نگه‌دار تا خودکار بزنه)\n"
+    "• دکمه ✋: برداشتن منبع نزدیک یا سوار/پیاده شدن از ماشین\n\n"
+    "🌲 منابع: درخت (چوب)، سنگ، بشکه (فلز)، بوته (پارچه)، بوته‌ی قرمز (غذا)، چشمه (آب)\n\n"
+    "🛠️ ساخت: از منوی «ساخت» ابزار و سلاح بساز (تبر، کلنگ، چاقو، آچار، باند زخم) — هرکدوم برد حمله‌ی متفاوتی دارن\n\n"
+    "🏠 بنا: از منوی «بنا» دیوار/در/پنجره بساز. دیوار جلوی زامبی و خودتو می‌گیره، در و پنجره فقط جلوی زامبی رو می‌گیرن\n\n"
+    "🧟 زامبی‌ها: فقط وقتی بهشون نزدیک بشی متوجه‌ات می‌شن و دنبالت می‌کنن\n\n"
+    "🚗 ماشین: با آچار + ۳ قطعه موتور تعمیرش کن، بعد با قوطی بنزین پرش کن تا سوار بشی\n\n"
+    "💀 اگه سلامتیت صفر بشه، یه دنیای تازه از اول شروع می‌شه."
+)
 
 
 # ==================== اعتبارسنجی initData تلگرام ====================
@@ -94,6 +109,7 @@ def default_state(user_id: int) -> dict:
         "equipped": None,
         "car": {"repaired": False, "fuel": 0},
         "modifications": {},   # چانک‌های برداشت‌شده / سازه‌های ساخته‌شده
+        "guideSeen": False,
         "updatedAt": time.time(),
     }
 
@@ -158,7 +174,17 @@ def api_reset():
         return jsonify({"ok": False, "error": "invalid_init_data"}), 401
 
     uid = user["id"]
+    old_path = user_file(uid)
+    guide_seen = False
+    if os.path.exists(old_path):
+        try:
+            with open(old_path, "r", encoding="utf-8") as f:
+                guide_seen = json.load(f).get("guideSeen", False)
+        except Exception:
+            pass
+
     fresh = default_state(uid)
+    fresh["guideSeen"] = guide_seen
     save_state_to_disk(uid, fresh)
     return jsonify({"ok": True, "state": fresh})
 
@@ -177,7 +203,8 @@ async def send_game_button(update: Update):
     )
     await update.message.reply_text(
         "به دنیای بی‌پایان بقا خوش اومدی! 🧟\n"
-        "منابع جمع کن، بساز، ماشین رو تعمیر کن و زنده بمون.\n\n"
+        "منابع جمع کن، بساز، ماشین رو تعمیر کن و زنده بمون.\n"
+        "برای دیدن راهنما دستور /help یا کلمه‌ی «راهنما» رو بفرست.\n\n"
         "برای شروع دکمه‌ی پایین رو بزن:",
         reply_markup=kb,
     )
@@ -187,9 +214,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_game_button(update)
 
 
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(HELP_TEXT)
+
+
 async def on_keyword_bagha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         await send_game_button(update)
+
+
+async def on_keyword_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message and update.message.text:
+        await update.message.reply_text(HELP_TEXT)
 
 
 async def set_menu_button(application: Application):
@@ -217,6 +253,10 @@ def run_bot():
         .build()
     )
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(CommandHandler("help", cmd_help))
+    application.add_handler(
+        MessageHandler(filters.Regex(r"راهنما") & filters.TEXT & ~filters.COMMAND, on_keyword_help)
+    )
     application.add_handler(
         MessageHandler(filters.Regex(r"بقا") & filters.TEXT & ~filters.COMMAND, on_keyword_bagha)
     )
