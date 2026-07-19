@@ -8,6 +8,13 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="rotate-prompt">
+    <div>
+      📱↻<br>
+      برای بازی، گوشیت رو افقی بچرخون
+    </div>
+  </div>
+
   <canvas id="game"></canvas>
 
   <!-- HUD بالا -->
@@ -19,16 +26,21 @@
   </div>
 
   <div id="toast"></div>
+  <div id="range-label"></div>
 
-  <!-- جوی‌استیک -->
+  <!-- جوی‌استیک حرکت (چپ) -->
   <div id="joystick-zone">
     <div id="joystick-base"><div id="joystick-stick"></div></div>
   </div>
 
-  <!-- دکمه‌های عمل -->
+  <!-- جوی‌استیک هدف‌گیری / حمله (راست) -->
+  <div id="aim-zone">
+    <div id="aim-base"><div id="aim-stick"></div></div>
+  </div>
+
+  <!-- دکمه تعامل (برداشتن منبع / سوار ماشین) -->
   <div id="action-buttons">
     <button id="btn-interact">✋</button>
-    <button id="btn-attack">⚔️</button>
   </div>
 
   <!-- منوی پایین (Craft / Build / Item) -->
