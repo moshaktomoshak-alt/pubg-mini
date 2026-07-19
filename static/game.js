@@ -1,14 +1,15 @@
 // ==================== تنظیمات پایه ====================
 const TILE = 40;
-const RESOURCE_DENSITY = 0.06;
+const RESOURCE_DENSITY = 0.065;
 
 const RECIPES = {
   craft: [
-    { id: "axe",    name: "تبر",        need: { wood: 5 },              give: { axe: 1 } },
-    { id: "pick",   name: "کلنگ",       need: { wood: 3, stone: 5 },    give: { pick: 1 } },
-    { id: "knife",  name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 } },
-    { id: "wrench", name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 } },
-    { id: "bandage",name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 } },
+    { id: "axe",     name: "تبر",        need: { wood: 5 },              give: { axe: 1 },     info: "دمیج 25 — برد 70" },
+    { id: "pick",    name: "کلنگ",       need: { wood: 3, stone: 5 },    give: { pick: 1 },    info: "دمیج 20 — برد 65" },
+    { id: "knife",   name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 },   info: "دمیج 35 — برد 60" },
+    { id: "wrench",  name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },  info: "دمیج 15 — برد 55 — همچنین برای تعمیر بدنه ماشین" },
+    { id: "bandage", name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
+    { id: "fuel_can",name: "قوطی بنزین", need: { corn: 4 },              give: { fuel_can: 1 },info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
   ],
   build: [
     { id: "wall",   name: "دیوار چوبی", need: { wood: 6 },            give: { wall: 1 } },
@@ -19,14 +20,16 @@ const RECIPES = {
 };
 
 const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
+const CAR_COLORS = ["car_red", "car_blue", "car_green", "car_black"];
 
 const RESOURCE_NODES = {
-  tree: { gives: "wood",  amount: [1, 3], images: ["tree1", "tree2"],   drawH: 34, color: "#2e6b1f", radius: 10 },
+  tree: { gives: "wood",  amount: [1, 3], images: ["tree1", "tree2"],   drawH: 36, color: "#2e6b1f", radius: 10 },
   rock: { gives: "stone", amount: [1, 2], images: ["rock1", "rock2", "rock3"], drawH: 24, color: "#8a8a8a", radius: 9 },
   scrap:{ gives: "metal", amount: [1, 2], images: ["metal1", "metal2"], drawH: 22, color: "#b5652b", radius: 8 },
   bush: { gives: "cloth", amount: [1, 1], color: "#7a9e4a", radius: 7 },
   berry:{ gives: "food",  amount: [1, 2], color: "#c73f5c", radius: 6 },
   well: { gives: "water", amount: [1, 2], color: "#3f7fc7", radius: 7 },
+  corn: { gives: "corn",  amount: [1, 2], color: "#e8c93a", radius: 7 },
 };
 
 const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5" };
@@ -34,7 +37,7 @@ const SOLID_FOR_ZOMBIE = { wall: true, door: true, window: true };
 const SOLID_FOR_PLAYER = { wall: true };
 
 const ITEM_FA = {
-  wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب",
+  wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت",
   axe: "تبر", pick: "کلنگ", knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
   wall: "دیوار", floor: "کف", door: "در", window: "پنجره",
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
@@ -42,6 +45,7 @@ const ITEM_FA = {
 
 const WEAPON_RANGE = { fists: 45, knife: 60, axe: 70, pick: 65, wrench: 55 };
 const WEAPON_DAMAGE = { fists: 12, knife: 35, axe: 25, pick: 20, wrench: 15 };
+const WEAPON_COLOR = { fists: null, knife: "#d8d8d8", axe: "#8a5a2b", pick: "#777", wrench: "#5b7fbf" };
 const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
 
@@ -53,18 +57,21 @@ const PLAYER_SPEED = 2.6;
 const ZOMBIE_DAMAGE = 6;
 const ZOMBIE_MAX = 8;
 const ZOMBIE_SPAWN_EVERY = 7000;
+
 const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
+const CAR_SECTOR_SIZE = 640;
+const CAR_SECTOR_CHANCE = 0.35;
 
 const HELP_TEXT_HTML = `
   <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
   <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
   <div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
   <div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
-  <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب</div>
-  <div class="help-item">🛠️ <b>ساخت:</b> تبر/کلنگ/چاقو/آچار هرکدوم برد حمله‌ی متفاوتی دارن</div>
+  <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
+  <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
   <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
   <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
-  <div class="help-item">🚗 <b>ماشین:</b> اول با ۳ فلز و ۲ سنگ موتورشو تعمیر کن، بعد با قوطی بنزین پرش کن. اگه تو ماشین از زامبی ضربه بخوری بدنه‌اش خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
+  <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
   <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
 
@@ -82,6 +89,10 @@ const IMG_SRC = {
   grass1: "data:image/png;base64,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",
   grass2: "data:image/png;base64,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",
   grass3: "data:image/png;base64,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",
+  car_red: "data:image/png;base64,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",
+  car_blue: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEcAAACDCAYAAADfyQa9AAAPPUlEQVR4nO1dW2xcxRn+Zubsem2v7Y3tOMbh4iCnTmlpTBSkKtDGqaqGIhGoqqhS01BD+8ADD0VKSB+ooFIfSgKo6lMequJwiWgpUspDCg8opiFV1UTEQIGEuNhJsLNx1s6ud73eyzlz+nD2nD33y9rr7Dr+JMu7M3PO+f9vZ/7zz+WfIagSOodefBYACHivDNJb+Z3IiP6bzOUJSeYT+rTkq0+/X/n9XZ4c+IrdB9pikY4BRmgvoaSXQh7gQIxSOrj04lUGzvkIBZIcZFQlMycVJnJHn7kY5D6+yIntPbg9xMiQDPoIpSRWkcS1As6PSRzHZl7Zd8SrqCs5XT/7/WYuCMOU0oElE65GwLmcFDkfSr6y/+9OZRzJ6Xj0hZ8zgQ5X+vDGjm6wcCNYOALWEKn0Niikk4bvxWwasiRq37kkQlzIVHx/mUvD14b3P2aXZ0uOGzHfuG0ttvXfiramBgDAtv5bAQC3dbbi9s42TM0VcOjUJE6Mz1UscFDs2NCK/fetR09rGJcSKVxOKM/+9PI1pLJ5pLJ5fHr5Gv51/ivb650IspATe/TQw2GBHTOn/2TbXdj38Ldxe2eb7QPSeQmvf3wNh09fDabZEuKJe9dhz7fWoqWB2eZfSqTwl1Of4YW3/23J41z6Q2J4/1P6NCM5uw+0dTV3joKyXjWptbEBf3z8B/jhlj5Hod4+N4tDH0wiXeCuwsuyDFnm+gTIsux6jR0IIQAhoNRKQkuYYv/967FrU7vj9f+9NI0fHfwb5hbyhvS5XLZX/0YzkNM59OKzlJLn9GnvPbsH37y9y/YhZyYzOPTBJM7P5BTFuVQioEyCzN0JWwwIpcp/QkAIVf5TCkIo+jsi2H//emxdH7W91o4gzvlIYnjfDu3+6ofIT393R2ukaUJ/g4e2bcaffvE9y41Vu/Le2CxkWYYkiUAFNaCaoEwAoRTf72vX7JEZT732Po6e+NCQViiKg6pTSdXEaLhxSF+IhSP4z3wrfnlsDFNzBQCKXTl8Oo6dRz7Bu+euQiwWIInFmiMGUN5iUrGAd89dxc4jn+Dw6TjSeQmAosdT/xjHe7PNYGHjmzTEyJD6Was5XUOHxvW2pu2Or6Op8xYASjvetakdb5+bxfX5HLjuVVovoEzAmuYI9mxei9c/uqbZx2ziClIXPzeUnU5fjeHN51MUUJw9PTGECYjEOrXC6QLH6x8nkMoV65IYQKlJqVwRh09fNbw4IrFOECYYysYaOweBUrPiQugRfWY4GgMVQpYHSGJ9EqPCTn4qhBCOxgxpAsUgoNkceVCf2dCyxvbmMpcWL+ENhJP8Vn3JAFAih0Lu1WeFW2KWG/A6J0aFnR5WfXXk6O0NAISaWqohV83CrC+lJIbdB9pobO/B7foModHeaVrpMOsdi3QMUHMharLcNwvs9KaM0F59gvPwQvBBw9qEvR5mvRmhvZRQ4/guCzfaXkyppZLVJZz0MOutDAGvwhGByCGkvptWUPmD1Zw6Jyeo/AGbVZ2TE1D+QOTUu1EOKn99a1tlWMjhUtGx8E1nkEVJGtEniFmXOaA6J8dNfrtKEbCvUBk5yqC3MggOQgwD4n7AuaTNVMgyLw3mVzJw7/w8c6UQJWnEQo7bSJ+nQSMEtDT6TwhZsn6a3RSMCs4lyFwhTCXR+T7BTKyQzM2MdoXWaQmVTK0SSkEpA2VMqR3LCEoZUCJPlnmZKEmsaE5MDwFvPp/C4y/5voAQAlmWQUpkUMoCGbqWMEV/p33/zQ3nEwuek4aEUBCm/DhMCEGWOTjn4JIEyO7XSoWcJU0AlBUH+qUlxWzaccCLhRo8q2d/RwQtDQw7NrRpRPR3NjpO0wZBOi/hfGIBgELYifGUkjZjVY4QCsYoGBOMM602MJOTfPXp90tGQR4FyKCaEcTu6InYsaHNdvJsKdHSwLRZzK3ro9izea2WNzVXwInxlC1hlTR3W4spe0y/9LSE8MS93djaE606GUHQ0xrGns1rNcKm5go4M5XB4dNxTKWd/bdiNm34zrmcBMqzD6PGwu5G+fjeu7BrU3tNEWOHntYwdm1qx/G9d7mWs7YUhY8SOTS59KLVD5xaSkXv3TOTla+kuhHwktfaUnQ1R+byhD6rkL7uejN1Qr5eEFxepSVRADCv6/XC+ZmFgA+7sfCS12yQ1cpSUbNaaTXHbHPUykIBICcVJvSZRY8uhOqE1Qu85HXy6wQAyB195mKrrgvh5edMpQtB5YMkSeClnjTnXPvsB5RSzfmklIKxYJ62l7zm/qS6ssux2yzL3NGrtHOoOOeQJKm0DE7SCAhKhF+ohKl/jCl9PMaYxYt3cwDduhWO5HBJAhOcTdKn8QzubFN+QVEUIS7z2h030gVBgCAoqn2Zcrc3YiHvmKdpzzkf0Wfk52ZdbzqdTCOXyyGXyy07MV4QRVGTbTqZdi1bnDcuJtfz4Fg1tMEjB4xOOzNeS3CTk5eWBjvB9VXu1jvPeIyt1Arc5PRa3+hBjjOzY8ngb6wbASc5ldFCd3ukkUNg7EKIuXkAzsvd6r3mqHqpepZRHqHQyJFBJwxFSqw6sfu/pPPrsZbgJKeql2zRrzxC4dl9cFtBGs/U1lvKDDf5/KyM9dW3cmpa8fkaJ8dBPr8rY31NLMmca9MfeowlCxhY5xyFF8+IBgHj8yLi85V3WrubGbqbBd13Ad1RZxUcjbFPj90XOZxLYLCuaB+9mscDGzjGrhcwOp0vKa+QMXa9gPni8gSMbO5SogajIYq+NWEMdDWgu1lAPGP/QwSuOTKXJ0DL80+8WHaenJg+NbmAh96yDw1cTnykc/ROTS7AK+xXr4/ZQ9avHdBsjnnASzL1ObzmfeoFQfTwPdhVzYi75UQQPfyTU4MBZ5UgiB6+l0FU2qyaQwQDXRH0rQlrbxuvt4wZ6ltPfdspL4BcRQY/iB4ByAkmyLpmhgc2RDF0t32odRB0R+3JHP4khXfGM7gawD0IokdVmtXODc14Y9f6JSHGDUN3t+GNXeuxc0Oz72uqQo7fINfmEMGTW+yD2aqFJ7esQXPI5zKYqpDjE31rwoiGl3cBUzSsOH9LjdWlti4IRE69hzIGlX+15rhglRwXrJLjglVyXBAwGK2+uQwq/5JH6t2ooVM/z61upJ4PXJ2X8MFX2aW+rSve+TJY/8ovqhJE/puTCfz4ay3L4ilnChxvfeE+H14pNHJCxLgXIAs3GAqSgEEV1RJ4sSCU+h7wKk/qmXaOpKEGU9E6j7XS4F8P39Wh3uM7VQTRw3/Jeo/SU+GlBym3IN/k1Ht8pwqzHqHmVsN3QbcPa4BmtfhwoFpAED10S1B4rz6D6FZsrpRao8KvProlKMbdUIRIeVyWrJBao8KvPr6aVVAfp9bhVx9fpVbKa1yFXh9iWfDNY1o5rxtp8eArCPqYdr35KOUOqJ+07oN5g3kWaVKK+mif/R0R7LhTmaOamivgfGLBNiC1WujviKC/s9EQOei1LzOhzDOMwbHjqQbM+wmcd9pa98xkphTyLFmier3CoM3Y2qP8wj0tYY2ErT1Rxy19vcihTPBcauuueWmHAS84Cbh1vbPw1UZ/R8S19lJKPb1lCih7IdvfwLtJtSzzBJ5f+Ilhp5Rp5qOcVjYvCjks3KsvIDQpLrWfJlXJ7gLLAT9yUSa46uj8s/tsUj0ttRk+7a/muDctdRPzmDmD2Wz5a4dajS33+6PZmQ7VzFDA2BMFgFC01XcHbWtPbe5l6pccJgiaGVGhmhnbdsOY4LtzthSbd1QDfskhhIJQe11L5JRdZgCgzF+TAoA724SaDEZb2+h/JEFoMBpvgbFBQPNzyi4zAAhN/prKumaGTEYJHiWEQBAEhEIhCIIQOEh1MZAkCaIoolgsQhTLmwqta2a+pmyc9mNd1NSMfqm9LMsoFosoFstRKpRShEIhLTDVKUDVD8wBturz3IJru5sFn+SYQxTkQQC/VbWL6bNCPjeMHuhyP32Ic458/saFOw50RQyr253gtM2xsge76W1lt3O/HaLh2h4h9CufueaoXrKlfpvPQHBDX6w2fRwVfuUzG2QVFLsPGNbD+m1SgNHm1CKCyGeuPbG9B7fTWKRjoOKHB1iFfiMQRD6rUbZpVmGHAzHMUGOcah1+5TQbZYGxQcGuX+UHZ+NZ3PfyOXzn9ige7GvDd++onbMi/nkxjeNjKZy8lIEQbvDVFbLzdQRzv8quernh5KUMTl7KoDsawoN9bbinuwlbbmnyvnCJ8eGVLM7Gszg+lkI8Ezxy2c7XsTTKSk9OjGeK+PNoAoCyovzBvjZsbI9gY3sDNnZUfhqjEy7M5HBhNo8LszkcH0stOs7dTm9B8QaX1l/JFDj++plx3697upuwsb0B93Q3IRpm2Nje4KvTms5LuDCbR6Yg4Ww8iwuzeZyNL/3KMfOgF6XUWnOcTihaLM7GlWpvJq1WYLfdKIWp67CKMuhKPPp2qVCbUwc1glVyXLBKjgsouDShTzDvtnizgItWx5FykAlDoTo9inKxsNs4klIgqU9wPfdhBcOsN+d8hHKQUX1iceHmbFZmvQnkCSpyPqpPzCUTtu3PitIJz9T/4RbLBe30aUrht2uUSyaMCZyMEgDoevwlQ7C1/tzgIOCcK9shmPYYrMYmIeV1fepBHAQgtKKZDbvzg+dy2V4BAGQuDRPKhtSMzJVxRGKdvgfaVSiClc5dsNmMCFhMhLG/hQ2VIHNl3JjApYnc0WcuKmcHczKiz5MKOaTNFywRKGUV/lWHmPTUuOXMB4krB9pTAJh5Zd8Rs7+Tnf4K2cSVqghUK8gmrlhqDedycmbh2jFA5yEXJHnIfHHq4udIXf7Cp4GuH3CxiNTlLyx2BgAIl5/Dm8+nAJMpXzt06GW97dEuYAIaO7rR1HFLXZ8rLOYXsDATx/z0ZduVpDKXhq8N739M/W55z3UOvXDCvOzWDBaOQGiMWohST2+u1oCZG4rZNLgkopBOAjCeQCAVcrYH7ejBOR9NzF8bVGsN4OAEONWgoLAckt4UDbS8xQ5cKhq8WT+Ke8FcY1Q4ekixRw89LFDyK69aVM/gnI+IEn9O3XPdDE/3Mbb34PYQI0MyyMBKGDXknI8C8ogoycecSFFRkd8f23twOwiJmee8SutaLKECywIuTXCQCQJ5QgadEDkfhaycNgSUd+QPgqp2iswHxYcIHTBHIVcC/S6QYZknp1/79UeLvacd/g/WOkkqOcKeXAAAAABJRU5ErkJggg==",
+  car_green: "data:image/png;base64,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",
+  car_black: "data:image/png;base64,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",
 };
 
 const IMG = {};
@@ -115,7 +126,6 @@ function drawImageRotated(im, x, y, targetH, angle) {
   return true;
 }
 
-// افکت قرمز چشمک‌زن روی اسپرایت وقتی ضربه می‌خوره
 function drawHitFlash(x, y, radius) {
   ctx.save();
   ctx.globalAlpha = 0.5;
@@ -123,6 +133,50 @@ function drawHitFlash(x, y, radius) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+// دست و پای ساده‌ی رویه‌ای (چون اسپرایت‌ها لایه‌ی جدا برای عضو ندارن) + سلاح تو دست
+function drawLimbsAndWeapon(x, y, facing, walkPhase, weaponKey, attackPulse) {
+  const legSwing = Math.sin(walkPhase) * 6;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(facing);
+  // پاها
+  ctx.fillStyle = "#3b2a17";
+  ctx.fillRect(-6, 9 + legSwing * 0.4, 5, 9);
+  ctx.fillRect(1, 9 - legSwing * 0.4, 5, 9);
+  // دست‌ها
+  ctx.fillStyle = "#e8c07a";
+  const armSwing = Math.sin(walkPhase + Math.PI) * 4;
+  ctx.beginPath(); ctx.arc(-9, armSwing, 4, 0, Math.PI * 2); ctx.fill();
+  const handForwardX = attackPulse ? 20 : 9;
+  ctx.beginPath(); ctx.arc(handForwardX, -armSwing, 4, 0, Math.PI * 2); ctx.fill();
+  // سلاح تو دست جلویی
+  const wColor = WEAPON_COLOR[weaponKey];
+  if (wColor) {
+    ctx.strokeStyle = wColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(handForwardX, -armSwing);
+    ctx.lineTo(handForwardX + 14, -armSwing);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawZombieLimbs(x, y, facing, walkPhase) {
+  const legSwing = Math.sin(walkPhase) * 5;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(facing);
+  ctx.fillStyle = "#2f5d33";
+  ctx.fillRect(-6, 8 + legSwing * 0.4, 5, 8);
+  ctx.fillRect(1, 8 - legSwing * 0.4, 5, 8);
+  // دست‌های دراز به جلو (حالت کلاسیک زامبی)
+  ctx.fillStyle = "#4a7a4e";
+  ctx.beginPath(); ctx.arc(11, -6, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(11, 6, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
@@ -147,12 +201,14 @@ let lastZombieSpawn = 0;
 let placeMode = null;
 let waypointArmed = false;
 let inCar = false;
+let currentCarKey = null;
 let isDead = false;
 let isPanelOpen = false;
 
 let playerFacing = Math.PI / 2;
 let lastAttackTime = 0;
 let playerHitFlashUntil = 0;
+let attackPulseUntil = 0;
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -208,6 +264,51 @@ function moveWithCollision(entity, dx, dy, solidFn) {
   }
 }
 
+// ==================== ماشین‌های پخش‌شده تو نقشه ====================
+function sectorCarInfo(sx, sy) {
+  const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
+  if (h > CAR_SECTOR_CHANCE) return null;
+  const ox = (hash2(sx + 0.11, sy + 0.22, state.worldSeed + 55) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
+  const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
+  const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
+  return {
+    key: "s_" + sx + "_" + sy,
+    x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox,
+    y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy,
+    color: CAR_COLORS[colorIdx],
+  };
+}
+
+function getAllNearbyCars() {
+  const list = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "car_red" }];
+  const psx = Math.floor(state.player.x / CAR_SECTOR_SIZE);
+  const psy = Math.floor(state.player.y / CAR_SECTOR_SIZE);
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const info = sectorCarInfo(psx + dx, psy + dy);
+      if (info) list.push(info);
+    }
+  }
+  return list;
+}
+
+function getCarState(key) {
+  if (!state.cars[key]) {
+    state.cars[key] = { repaired: false, fuel: 0, health: 100 };
+  }
+  return state.cars[key];
+}
+
+function nearestCar() {
+  const cars = getAllNearbyCars();
+  let best = null, bestD = INTERACT_RANGE + 20;
+  for (const c of cars) {
+    const d = Math.hypot(c.x - state.player.x, c.y - state.player.y);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
 // ==================== بارگذاری / ذخیره / ریست ====================
 async function loadState() {
   try {
@@ -222,8 +323,11 @@ async function loadState() {
 }
 
 function normalizeState() {
-  if (!state.car) state.car = { repaired: false, fuel: 0, health: 100 };
-  if (state.car.health === undefined) state.car.health = 100;
+  if (!state.cars) state.cars = {};
+  if (state.car && !state.cars.main) {
+    state.cars.main = { repaired: !!state.car.repaired, fuel: state.car.fuel || 0, health: state.car.health ?? 100 };
+  }
+  if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
   if (state.waypoint === undefined) state.waypoint = null;
 }
 
@@ -231,7 +335,8 @@ function freshLocalState() {
   return {
     worldSeed: Math.floor(Math.random() * 100000),
     player: { x: 0, y: 0, health: 100, hunger: 100, thirst: 100, stamina: 100 },
-    inventory: {}, equipped: null, car: { repaired: false, fuel: 0, health: 100 },
+    inventory: {}, equipped: null,
+    cars: { main: { repaired: false, fuel: 0, health: 100 } },
     modifications: {}, guideSeen: false, waypoint: null,
   };
 }
@@ -329,7 +434,7 @@ setupStick("aim-zone", "aim-stick",
   () => { aimVec.x = 0; aimVec.y = 0; }
 );
 
-// ==================== تپ روی صحنه (جاگذاری سازه / GPS) ====================
+// ==================== تپ روی صحنه ====================
 canvas.addEventListener("click", (e) => onTapScreen(e.clientX, e.clientY));
 canvas.addEventListener("touchstart", (e) => {
   if (e.target !== canvas) return;
@@ -382,12 +487,18 @@ function closePanel() {
   isPanelOpen = false;
 }
 
-function openPanel(kind) {
+function panelFeedback(msg) {
+  const el = document.getElementById("panel-feedback");
+  if (el) el.textContent = msg;
+}
+
+function openPanel(kind, carKey) {
   if (isDead) return;
   const overlay = document.getElementById("panel-overlay");
   const title = document.getElementById("panel-title");
   const content = document.getElementById("panel-content");
   content.innerHTML = "";
+  panelFeedback("");
   overlay.classList.remove("hidden");
   isPanelOpen = true;
 
@@ -395,7 +506,7 @@ function openPanel(kind) {
     title.textContent = "📖 راهنما";
     content.innerHTML = HELP_TEXT_HTML;
   } else if (kind === "car") {
-    renderCarPanel(title, content);
+    renderCarPanel(title, content, carKey);
   } else if (kind === "inventory") {
     title.textContent = "🎒 آیتم‌های من";
     const inv = state.inventory;
@@ -411,7 +522,7 @@ function openPanel(kind) {
         const b = document.createElement("button");
         b.textContent = state.equipped === k ? "مجهز شده" : "استفاده";
         b.disabled = state.equipped === k;
-        b.onclick = () => { state.equipped = k; openPanel("inventory"); };
+        b.onclick = () => { state.equipped = k; panelFeedback(ITEM_FA[k] + " رو دستت گرفتی 🖐️"); openPanel("inventory"); };
         row.appendChild(b);
       } else if (k === "wall" || k === "floor" || k === "door" || k === "window") {
         const b = document.createElement("button");
@@ -437,9 +548,14 @@ function openPanel(kind) {
     for (const r of list) {
       const row = document.createElement("div");
       row.className = "item-row";
-      const costText = Object.entries(r.need).map(([k, v]) => `${ITEM_FA[k]} ${v}`).join("، ");
+      const costText = Object.entries(r.need).map(([k, v]) => {
+        const have = state.inventory[k] || 0;
+        const ok = have >= v;
+        return `${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
+      }).join("، ");
+      const infoText = r.info ? `<div class="cost">ℹ️ ${r.info}</div>` : "";
+      row.innerHTML = `<span class="name">${r.name}<div class="cost">نیاز: ${costText}</div>${infoText}</span>`;
       const can = Object.entries(r.need).every(([k, v]) => (state.inventory[k] || 0) >= v);
-      row.innerHTML = `<span class="name">${r.name}<div class="cost">نیاز: ${costText}</div></span>`;
       const b = document.createElement("button");
       b.textContent = "ساخت";
       b.disabled = !can;
@@ -451,14 +567,19 @@ function openPanel(kind) {
 }
 
 // ==================== پنل اختصاصی ماشین ====================
-function renderCarPanel(title, content) {
-  const car = state.car;
+function renderCarPanel(title, content, carKey) {
+  currentCarKey = carKey || "main";
+  const car = getCarState(currentCarKey);
   title.textContent = "🚗 ماشین";
 
   if (!car.repaired) {
     const row = document.createElement("div");
     row.className = "item-row";
-    const costText = Object.entries(CAR_ENGINE_NEED).map(([k, v]) => `${ITEM_FA[k]} ${v}`).join("، ");
+    const costText = Object.entries(CAR_ENGINE_NEED).map(([k, v]) => {
+      const have = state.inventory[k] || 0;
+      const ok = have >= v;
+      return `${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
+    }).join("، ");
     const can = Object.entries(CAR_ENGINE_NEED).every(([k, v]) => (state.inventory[k] || 0) >= v);
     row.innerHTML = `<span class="name">تعمیر موتور<div class="cost">نیاز: ${costText}</div></span>`;
     const b = document.createElement("button");
@@ -467,15 +588,15 @@ function renderCarPanel(title, content) {
     b.onclick = () => {
       for (const [k, v] of Object.entries(CAR_ENGINE_NEED)) state.inventory[k] -= v;
       car.repaired = true;
+      panelFeedback("موتور تعمیر شد ✅");
       toast("موتور تعمیر شد! حالا بنزین بریز ⛽");
-      openPanel("car");
+      openPanel("car", currentCarKey);
     };
     row.appendChild(b);
     content.appendChild(row);
     return;
   }
 
-  // وضعیت بدنه
   const healthRow = document.createElement("div");
   healthRow.className = "item-row";
   healthRow.innerHTML = `<span class="name">🔧 سلامت بدنه: ${Math.round(car.health)}٪</span>`;
@@ -487,14 +608,14 @@ function renderCarPanel(title, content) {
     b.onclick = () => {
       state.inventory.wrench -= 1;
       car.health = Math.min(100, car.health + 50);
+      panelFeedback("بدنه تعمیر شد ✅");
       toast("بدنه تعمیر شد 🔧");
-      openPanel("car");
+      openPanel("car", currentCarKey);
     };
     healthRow.appendChild(b);
   }
   content.appendChild(healthRow);
 
-  // وضعیت بنزین
   const fuelRow = document.createElement("div");
   fuelRow.className = "item-row";
   fuelRow.innerHTML = `<span class="name">⛽ بنزین: ${Math.round(car.fuel)}٪</span>`;
@@ -506,25 +627,31 @@ function renderCarPanel(title, content) {
     b.onclick = () => {
       state.inventory.fuel_can -= 1;
       car.fuel = Math.min(100, car.fuel + 34);
+      panelFeedback("بنزین اضافه شد ✅");
       toast("بنزین اضافه شد ⛽");
-      openPanel("car");
+      openPanel("car", currentCarKey);
     };
     fuelRow.appendChild(b);
   }
   content.appendChild(fuelRow);
+  if ((state.inventory.corn || 0) > 0 || true) {
+    const hintRow = document.createElement("div");
+    hintRow.className = "item-row";
+    hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
+    content.appendChild(hintRow);
+  }
 
-  // سوار/پیاده شدن
   const rideRow = document.createElement("div");
   rideRow.className = "item-row";
-  rideRow.innerHTML = `<span class="name">${inCar ? "سوار ماشینی" : "کنار ماشینی"}</span>`;
+  rideRow.innerHTML = `<span class="name">${inCar && currentCarKey === carKey ? "سوار ماشینی" : "کنار ماشینی"}</span>`;
   const rb = document.createElement("button");
   if (inCar) {
     rb.textContent = "پیاده شو";
-    rb.onclick = () => { inCar = false; toast("پیاده شدی"); closePanel(); };
+    rb.onclick = () => { inCar = false; panelFeedback("پیاده شدی"); closePanel(); };
   } else {
     rb.textContent = "سوار شو";
     rb.disabled = car.fuel <= 0;
-    rb.onclick = () => { inCar = true; toast("سوار ماشین شدی 🚗"); closePanel(); };
+    rb.onclick = () => { inCar = true; panelFeedback("سوار شدی 🚗"); closePanel(); };
   }
   rideRow.appendChild(rb);
   content.appendChild(rideRow);
@@ -533,6 +660,7 @@ function renderCarPanel(title, content) {
 function craft(recipe) {
   for (const [k, v] of Object.entries(recipe.need)) state.inventory[k] -= v;
   for (const [k, v] of Object.entries(recipe.give)) state.inventory[k] = (state.inventory[k] || 0) + v;
+  panelFeedback(recipe.name + " ساخته شد ✅");
   toast(recipe.name + " ساخته شد ✅");
 }
 
@@ -540,6 +668,7 @@ function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
   state.player.health = Math.min(100, state.player.health + 25);
+  panelFeedback("مصرف شد، +۲۵ سلامتی ✅");
   toast("زخم بسته شد، +۲۵ سلامتی");
 }
 
@@ -548,6 +677,7 @@ function consumeItem(k) {
   state.inventory[k] -= 1;
   if (k === "food") state.player.hunger = Math.min(100, state.player.hunger + 30);
   if (k === "water") state.player.thirst = Math.min(100, state.player.thirst + 30);
+  panelFeedback(ITEM_FA[k] + " مصرف شد ✅");
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
 }
 
@@ -594,8 +724,8 @@ function nearestResource() {
 
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
-  const carDist = Math.hypot(CAR_WORLD_X - state.player.x, CAR_WORLD_Y - state.player.y);
-  if (carDist < INTERACT_RANGE + 20) { openPanel("car"); return; }
+  const car = nearestCar();
+  if (car) { openPanel("car", car.key); return; }
 
   const res = nearestResource();
   if (res) {
@@ -622,362 +752,4 @@ function angleDiffDeg(a, b) {
 }
 
 function performAimedAttack() {
-  const range = WEAPON_RANGE[currentWeaponKey()];
-  const dmg = WEAPON_DAMAGE[currentWeaponKey()];
-  let target = null, bestD = Infinity;
-  for (const z of zombies) {
-    const dx = z.x - state.player.x, dy = z.y - state.player.y;
-    const d = Math.hypot(dx, dy);
-    if (d > range) continue;
-    const ang = Math.atan2(dy, dx);
-    if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
-    if (d < bestD) { bestD = d; target = z; }
-  }
-  if (!target) return;
-  target.hp -= dmg;
-  target.hitFlashUntil = performance.now() + 200;
-  if (target.hp <= 0) {
-    zombies = zombies.filter((z) => z !== target);
-    toast("زامبی نابود شد 💀");
-  }
-}
-
-// ==================== زامبی‌ها ====================
-function spawnZombie() {
-  if (zombies.length >= ZOMBIE_MAX) return;
-  const ang = Math.random() * Math.PI * 2;
-  const dist = 420 + Math.random() * 150;
-  zombies.push({
-    x: state.player.x + Math.cos(ang) * dist,
-    y: state.player.y + Math.sin(ang) * dist,
-    hp: 60,
-    facing: 0,
-    alerted: false,
-    hitFlashUntil: 0,
-    alertPulseUntil: 0,
-  });
-}
-
-function updateZombies(dt) {
-  const now = performance.now();
-  if (now - lastZombieSpawn > ZOMBIE_SPAWN_EVERY) { spawnZombie(); lastZombieSpawn = now; }
-  for (const z of zombies) {
-    const dx = state.player.x - z.x, dy = state.player.y - z.y;
-    const d = Math.hypot(dx, dy) || 1;
-
-    if (!z.alerted) {
-      if (d <= ZOMBIE_SIGHT_RANGE) {
-        z.alerted = true;
-        z.alertPulseUntil = now + 700;
-      }
-    } else if (d > ZOMBIE_LOSE_INTEREST) {
-      z.alerted = false;
-    }
-
-    if (z.alerted) {
-      z.facing = Math.atan2(dy, dx);
-      moveWithCollision(z, (dx / d) * ZOMBIE_SPEED * dt, (dy / d) * ZOMBIE_SPEED * dt, isSolidForZombie);
-      if (d < 26) {
-        if (inCar) {
-          state.car.health = Math.max(0, state.car.health - ZOMBIE_DAMAGE * dt * 0.06);
-          if (state.car.health <= 0) {
-            state.car.repaired = false;
-            inCar = false;
-            toast("ماشین از کار افتاد! 💥");
-          }
-        } else {
-          state.player.health -= ZOMBIE_DAMAGE * dt * 0.06;
-          playerHitFlashUntil = now + 200;
-        }
-      }
-    }
-  }
-}
-
-// ==================== حرکت و جهت بازیکن ====================
-function updatePlayer(dt) {
-  const p = state.player;
-  const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
-  const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
-
-  const speed = (inCar ? PLAYER_SPEED * 3.4 : PLAYER_SPEED) * (state.player.stamina > 0 ? 1 : 0.5);
-  if (moving) {
-    const dx = joyVec.x * speed * dt, dy = joyVec.y * speed * dt;
-    if (inCar) {
-      p.x += dx; p.y += dy;
-      state.car.fuel = Math.max(0, state.car.fuel - dt * 0.9);
-      if (state.car.fuel <= 0) inCar = false;
-    } else {
-      moveWithCollision(p, dx, dy, isSolidForPlayer);
-      state.player.stamina = Math.max(0, state.player.stamina - dt * 0.08);
-    }
-  } else if (!inCar) {
-    state.player.stamina = Math.min(100, state.player.stamina + dt * 0.05);
-  }
-
-  if (aiming) {
-    playerFacing = Math.atan2(aimVec.y, aimVec.x);
-  } else if (moving) {
-    playerFacing = Math.atan2(joyVec.y, joyVec.x);
-  }
-
-  if (aiming) {
-    const now = performance.now();
-    if (now - lastAttackTime > ATTACK_INTERVAL_MS) {
-      lastAttackTime = now;
-      performAimedAttack();
-    }
-  }
-
-  p.hunger = Math.max(0, p.hunger - dt * 0.01);
-  p.thirst = Math.max(0, p.thirst - dt * 0.015);
-  if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
-  p.health = Math.min(100, p.health);
-
-  if (p.health <= 0 && !isDead) onDeath();
-}
-
-// ==================== دوربین و رندر ====================
-function getCamera() { return { x: state.player.x, y: state.player.y }; }
-
-function worldToScreen(wx, wy) {
-  const cam = getCamera();
-  return { x: canvas.width / 2 + (wx - cam.x), y: canvas.height / 2 + (wy - cam.y) };
-}
-
-function drawWorld() {
-  const cam = getCamera();
-  ctx.fillStyle = "#4a7d3f";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const tilesX = Math.ceil(canvas.width / TILE) + 2;
-  const tilesY = Math.ceil(canvas.height / TILE) + 2;
-  const centerTX = Math.round(cam.x / TILE), centerTY = Math.round(cam.y / TILE);
-  const grassKeys = ["grass1", "grass2", "grass3"];
-
-  for (let dx = -tilesX; dx <= tilesX; dx++) {
-    for (let dy = -tilesY; dy <= tilesY; dy++) {
-      const tx = centerTX + dx, ty = centerTY + dy;
-      const wx = tx * TILE, wy = ty * TILE;
-      const s = worldToScreen(wx, wy);
-      if (s.x < -TILE || s.x > canvas.width + TILE || s.y < -TILE || s.y > canvas.height + TILE) continue;
-
-      const gKey = pickVariant(grassKeys, tx, ty, state.worldSeed + 999);
-      const gImg = IMG[gKey];
-      if (imgReady(gImg)) {
-        ctx.drawImage(gImg, s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
-      } else {
-        const g = hash2(tx, ty, state.worldSeed + 999);
-        ctx.fillStyle = g < 0.04 ? "#3f6f36" : "#4a7d3f";
-        ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
-      }
-
-      const key = modKey(tx, ty);
-      const mod = state.modifications[key];
-
-      if (mod && mod.build) {
-        ctx.fillStyle = BUILDABLE[mod.build];
-        if (mod.build === "door") ctx.fillRect(s.x - TILE / 2 + 6, s.y - TILE / 2, TILE - 12, TILE);
-        else if (mod.build === "window") {
-          ctx.fillRect(s.x - TILE / 2 + 2, s.y - TILE / 2 + 10, TILE - 4, TILE - 20);
-        } else ctx.fillRect(s.x - TILE / 2 + 2, s.y - TILE / 2 + 2, TILE - 4, TILE - 4);
-        continue;
-      }
-
-      if (mod && mod.harvested) continue;
-
-      const res = tileResource(tx, ty, state.worldSeed);
-      if (res) {
-        const def = RESOURCE_NODES[res];
-        if (def.images) {
-          const variant = pickVariant(def.images, tx, ty, state.worldSeed);
-          const drawn = drawImageCentered(IMG[variant], s.x, s.y, def.drawH);
-          if (!drawn) {
-            ctx.fillStyle = def.color;
-            ctx.beginPath(); ctx.arc(s.x, s.y, def.radius, 0, Math.PI * 2); ctx.fill();
-          }
-        } else {
-          ctx.fillStyle = def.color;
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, def.radius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-  }
-}
-
-function drawCar() {
-  const s = worldToScreen(CAR_WORLD_X, CAR_WORLD_Y);
-  const carImg = IMG.car;
-  if (imgReady(carImg)) {
-    if (!state.car.repaired) ctx.filter = "grayscale(1) brightness(0.75)";
-    else if (state.car.health < 50) ctx.filter = "sepia(0.4) hue-rotate(-30deg)";
-    drawImageCentered(carImg, s.x, s.y, 52);
-    ctx.filter = "none";
-  } else {
-    ctx.fillStyle = state.car.repaired ? "#2f7d3a" : "#555";
-    ctx.fillRect(s.x - 22, s.y - 14, 44, 28);
-  }
-  ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-  let label;
-  if (!state.car.repaired) label = "🔧 موتور خرابه";
-  else label = `⛽${Math.round(state.car.fuel)}% 🔧${Math.round(state.car.health)}%`;
-  ctx.fillText(label, s.x, s.y - 34);
-}
-
-function drawZombies() {
-  const now = performance.now();
-  for (const z of zombies) {
-    const s = worldToScreen(z.x, z.y);
-    let by = s.y;
-    if (z.alerted) {
-      const t = now / 130;
-      by += Math.sin(t) * 2.5;
-    }
-    const drawn = drawImageRotated(IMG.zombie, s.x, by, 30, z.facing || 0);
-    if (!drawn) {
-      ctx.fillStyle = z.alerted ? "#3f8f4a" : "#5c8f63";
-      ctx.beginPath(); ctx.arc(s.x, by, 13, 0, Math.PI * 2); ctx.fill();
-    }
-    if (now < z.hitFlashUntil) drawHitFlash(s.x, by, 16);
-    if (now < z.alertPulseUntil) {
-      ctx.fillStyle = "#fff2a8";
-      ctx.font = "16px Tahoma";
-      ctx.textAlign = "center";
-      ctx.fillText("❗", s.x, by - 26);
-    }
-    ctx.fillStyle = "#111"; ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
-  }
-}
-
-function drawWaypoint() {
-  if (!state.waypoint) return;
-  const wp = state.waypoint;
-  const s = worldToScreen(wp.x, wp.y);
-  const dist = Math.round(Math.hypot(wp.x - state.player.x, wp.y - state.player.y));
-  const margin = 44;
-  const cx = canvas.width / 2, cy = canvas.height / 2;
-  const onScreen = s.x > margin && s.x < canvas.width - margin && s.y > margin + 40 && s.y < canvas.height - 90;
-
-  if (onScreen) {
-    ctx.fillStyle = "#e05353";
-    ctx.beginPath(); ctx.arc(s.x, s.y - 18, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(s.x - 6, s.y - 12); ctx.lineTo(s.x + 6, s.y - 12); ctx.lineTo(s.x, s.y);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-    ctx.fillText(dist + "m", s.x, s.y - 30);
-  } else {
-    const ang = Math.atan2(s.y - cy, s.x - cx);
-    const ex = cx + Math.cos(ang) * (canvas.width / 2 - margin);
-    const ey = cy + Math.sin(ang) * (canvas.height / 2 - margin);
-    ctx.save();
-    ctx.translate(ex, ey);
-    ctx.rotate(ang);
-    ctx.fillStyle = "#e05353";
-    ctx.beginPath();
-    ctx.moveTo(13, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-    ctx.fillText(dist + "m", ex, ey - 14);
-  }
-}
-
-function drawPlayer() {
-  const s = { x: canvas.width / 2, y: canvas.height / 2 };
-  const now = performance.now();
-
-  const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
-  if (aiming) {
-    const range = WEAPON_RANGE[currentWeaponKey()];
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(playerFacing);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    const coneRad = ATTACK_CONE_DEG * Math.PI / 180;
-    ctx.arc(0, 0, range, -coneRad, coneRad);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(224,83,83,0.22)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(224,83,83,0.6)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    const label = document.getElementById("range-label");
-    label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
-    label.classList.add("show");
-  } else {
-    document.getElementById("range-label").classList.remove("show");
-  }
-
-  const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
-  let by = s.y;
-  if (moving && !inCar) {
-    by += Math.sin(now / 140) * 3;
-  }
-
-  const drawn = drawImageRotated(IMG.player, s.x, by, 32, playerFacing);
-  if (!drawn) {
-    ctx.fillStyle = inCar ? "#d9a441" : "#e8c07a";
-    ctx.beginPath(); ctx.arc(s.x, by, 14, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#3b2a17"; ctx.lineWidth = 2; ctx.stroke();
-  }
-  if (now < playerHitFlashUntil) drawHitFlash(s.x, by, 18);
-}
-
-// ==================== حلقه اصلی ====================
-let lastTime = performance.now();
-function loop() {
-  const now = performance.now();
-  const dt = Math.min(2.2, (now - lastTime) / 16.67);
-  lastTime = now;
-
-  if (state && !isDead && !isPanelOpen) {
-    updatePlayer(dt);
-    updateZombies(dt);
-  }
-
-  if (state) {
-    drawWorld();
-    drawCar();
-    drawZombies();
-    drawWaypoint();
-    drawPlayer();
-    updateHUD();
-
-    if (!isDead && !isPanelOpen) {
-      saveTimer += dt;
-      if (saveTimer > 300) { saveTimer = 0; saveState(); }
-    }
-  }
-  requestAnimationFrame(loop);
-}
-
-function updateHUD() {
-  const p = state.player;
-  document.getElementById("bar-health").style.width = Math.max(0, p.health) + "%";
-  document.getElementById("bar-hunger").style.width = p.hunger + "%";
-  document.getElementById("bar-thirst").style.width = p.thirst + "%";
-  document.getElementById("bar-stamina").style.width = p.stamina + "%";
-}
-
-// ==================== شروع ====================
-(async function init() {
-  await loadState();
-  document.getElementById("loading").style.display = "none";
-  lastZombieSpawn = performance.now();
-
-  if (!state.guideSeen) {
-    openPanel("help");
-    state.guideSeen = true;
-    saveState();
-  }
-
-  loop();
-})();
-
-addEventListener("blur", saveState);
-document.addEventListener("visibilitychange", () => { if (document.hidden) saveState(); });
+  const range = WEAPON_RANGE[curr
