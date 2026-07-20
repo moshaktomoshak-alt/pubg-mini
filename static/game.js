@@ -9,6 +9,16 @@ window.addEventListener("error", function (e) {
   }
 });
 
+// ==================== محافظ نهایی: اگه هرچی شد بعد از ۸ ثانیه گیر نکنه ====================
+setTimeout(function () {
+  const el = document.getElementById("loading");
+  if (el && el.style.display !== "none") {
+    el.style.fontSize = "13px";
+    el.style.padding = "20px";
+    el.textContent = "⚠️ بازی بالا نیومد. اینترنت/فیلترشکن رو چک کن یا دوباره باز کن.";
+  }
+}, 8000);
+
 // ==================== تنظیمات پایه ====================
 const TILE = 40;
 const RESOURCE_DENSITY = 0.065;
@@ -333,13 +343,19 @@ function nearestCar() {
 // ==================== بارگذاری / ذخیره / ریست ====================
 async function loadState() {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
     const res = await fetch("/api/load", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     const data = await res.json();
     if (data.ok) { state = data.state; normalizeState(); return; }
-  } catch (e) {}
+  } catch (e) {
+    toast("اتصال به سرور برقرار نشد — حالت آزمایشی (ذخیره نمی‌شه)");
+  }
   state = freshLocalState();
 }
 
@@ -866,27 +882,4 @@ function updatePlayer(dt) {
       car.fuel = Math.max(0, car.fuel - dt * 0.9);
       if (car.fuel <= 0) inCar = false;
     } else {
-      moveWithCollision(p, dx, dy, isSolidForPlayer);
-      state.player.stamina = Math.max(0, state.player.stamina - dt * 0.035);
-    }
-  } else if (!inCar) {
-    state.player.stamina = Math.min(100, state.player.stamina + dt * 0.14);
-  }
-
-  if (aiming) {
-    playerFacing = Math.atan2(aimVec.y, aimVec.x);
-  } else if (moving) {
-    playerFacing = Math.atan2(joyVec.y, joyVec.x);
-  }
-
-  if (aiming) {
-    const now = performance.now();
-    if (now - lastAttackTime > ATTACK_INTERVAL_MS) {
-      lastAttackTime = now;
-      performAimedAttack();
-    }
-  }
-
-  p.hunger = Math.max(0, p.hunger - dt * 0.01);
-  p.thirst = Math.max(0, p.thirst - dt * 0.015);
-  if (p.hunger <= 
+      moveWithCollision(p, dx, dy, isSolidForPlaye
