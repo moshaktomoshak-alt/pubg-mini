@@ -882,4 +882,294 @@ function updatePlayer(dt) {
       car.fuel = Math.max(0, car.fuel - dt * 0.9);
       if (car.fuel <= 0) inCar = false;
     } else {
-      moveWithCollision(p, dx, dy, isSolidForPlaye
+      moveWithCollision(p, dx, dy, isSolidForPlayer);
+      state.player.stamina = Math.max(0, state.player.stamina - dt * 0.035);
+    }
+  } else if (!inCar) {
+    state.player.stamina = Math.min(100, state.player.stamina + dt * 0.14);
+  }
+
+  if (aiming) {
+    playerFacing = Math.atan2(aimVec.y, aimVec.x);
+  } else if (moving) {
+    playerFacing = Math.atan2(joyVec.y, joyVec.x);
+  }
+
+  if (aiming) {
+    const now = performance.now();
+    if (now - lastAttackTime > ATTACK_INTERVAL_MS) {
+      lastAttackTime = now;
+      performAimedAttack();
+    }
+  }
+
+  p.hunger = Math.max(0, p.hunger - dt * 0.01);
+  p.thirst = Math.max(0, p.thirst - dt * 0.015);
+  if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
+  p.health = Math.min(100, p.health);
+
+  if (p.health <= 0 && !isDead) onDeath();
+}
+
+// ==================== دوربین و رندر ====================
+function getCamera() { return { x: state.player.x, y: state.player.y }; }
+
+function worldToScreen(wx, wy) {
+  const cam = getCamera();
+  return { x: canvas.width / 2 + (wx - cam.x), y: canvas.height / 2 + (wy - cam.y) };
+}
+
+function drawWorld() {
+  ctx.fillStyle = "#4a8a3f";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const cam = getCamera();
+  const tilesX = Math.ceil(canvas.width / TILE) + 2;
+  const tilesY = Math.ceil(canvas.height / TILE) + 2;
+  const centerTX = Math.round(cam.x / TILE), centerTY = Math.round(cam.y / TILE);
+
+  for (let dx = -tilesX; dx <= tilesX; dx++) {
+    for (let dy = -tilesY; dy <= tilesY; dy++) {
+      const tx = centerTX + dx, ty = centerTY + dy;
+      const wx = tx * TILE, wy = ty * TILE;
+      const s = worldToScreen(wx, wy);
+      if (s.x < -TILE || s.x > canvas.width + TILE || s.y < -TILE || s.y > canvas.height + TILE) continue;
+
+      // زمین یکدست سبز با کمی تنوع رنگ ملایم (بدون نقشه‌ی خاکی به‌هم‌ریخته)
+      const g = hash2(tx, ty, state.worldSeed + 999);
+      ctx.fillStyle = g < 0.15 ? "#4f9345" : (g > 0.9 ? "#457c3c" : "#4a8a3f");
+      ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
+
+      const key = modKey(tx, ty);
+      const mod = state.modifications[key];
+
+      if (mod && mod.build) {
+        if (mod.build === "wall") {
+          if (imgReady(IMG.wall_user)) {
+            ctx.drawImage(IMG.wall_user, s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
+          } else {
+            ctx.fillStyle = "#8a6239";
+            ctx.fillRect(s.x - TILE / 2 + 2, s.y - TILE / 2 + 2, TILE - 4, TILE - 4);
+          }
+        } else if (mod.build === "door") {
+          ctx.fillStyle = BUILDABLE.door;
+          ctx.fillRect(s.x - TILE / 2 + 6, s.y - TILE / 2, TILE - 12, TILE);
+        } else if (mod.build === "window") {
+          ctx.fillStyle = BUILDABLE.window;
+          ctx.fillRect(s.x - TILE / 2 + 2, s.y - TILE / 2 + 10, TILE - 4, TILE - 20);
+        } else {
+          ctx.fillStyle = BUILDABLE[mod.build];
+          ctx.fillRect(s.x - TILE / 2 + 2, s.y - TILE / 2 + 2, TILE - 4, TILE - 4);
+        }
+        continue;
+      }
+
+      if (mod && mod.harvested) continue;
+
+      const res = tileResource(tx, ty, state.worldSeed);
+      if (res) {
+        const def = RESOURCE_NODES[res];
+        if (def.images) {
+          const variant = pickVariant(def.images, tx, ty, state.worldSeed);
+          const drawn = drawImageCentered(IMG[variant], s.x, s.y, def.drawH);
+          if (!drawn) {
+            ctx.fillStyle = def.color;
+            ctx.beginPath(); ctx.arc(s.x, s.y, def.radius, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          ctx.fillStyle = def.color;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, def.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+}
+
+function drawCars() {
+  const cars = getAllNearbyCars();
+  for (const c of cars) {
+    const s = worldToScreen(c.x, c.y);
+    if (s.x < -60 || s.x > canvas.width + 60 || s.y < -60 || s.y > canvas.height + 60) continue;
+    const cs = getCarState(c.key);
+    const carImg = IMG[c.color] || IMG.engine_orange;
+    if (imgReady(carImg)) {
+      if (!cs.repaired) ctx.filter = "grayscale(1) brightness(0.7)";
+      else if (cs.health < 50) ctx.filter = "sepia(0.35) hue-rotate(-25deg)";
+      drawImageCentered(carImg, s.x, s.y, 50);
+      ctx.filter = "none";
+    } else {
+      ctx.fillStyle = cs.repaired ? "#2f7d3a" : "#555";
+      ctx.fillRect(s.x - 20, s.y - 13, 40, 26);
+    }
+    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
+    let label = !cs.repaired ? "🔧 موتور خرابه" : `⛽${Math.round(cs.fuel)}% 🔧${Math.round(cs.health)}%`;
+    ctx.fillText(label, s.x, s.y - 32);
+  }
+}
+
+function drawZombies() {
+  const now = performance.now();
+  for (const z of zombies) {
+    const s = worldToScreen(z.x, z.y);
+    let by = s.y;
+    if (z.alerted) by += Math.sin(z.walkPhase) * 2.5;
+
+    drawZombieLimbs(s.x, by, z.facing || 0, z.walkPhase);
+    const drawn = drawImageRotated(IMG.zombie, s.x, by, 30, z.facing || 0);
+    if (!drawn) {
+      ctx.fillStyle = z.alerted ? "#3f8f4a" : "#5c8f63";
+      ctx.beginPath(); ctx.arc(s.x, by, 13, 0, Math.PI * 2); ctx.fill();
+    }
+    if (now < z.hitFlashUntil) drawHitFlash(s.x, by, 16);
+    if (now < z.alertPulseUntil) {
+      ctx.fillStyle = "#fff2a8";
+      ctx.font = "16px Tahoma";
+      ctx.textAlign = "center";
+      ctx.fillText("❗", s.x, by - 26);
+    }
+    ctx.fillStyle = "#111"; ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
+  }
+}
+
+function drawWaypoint() {
+  if (!state.waypoint) return;
+  const wp = state.waypoint;
+  const s = worldToScreen(wp.x, wp.y);
+  const dist = Math.round(Math.hypot(wp.x - state.player.x, wp.y - state.player.y));
+  const margin = 44;
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const onScreen = s.x > margin && s.x < canvas.width - margin && s.y > margin + 40 && s.y < canvas.height - 90;
+
+  if (onScreen) {
+    ctx.fillStyle = "#e05353";
+    ctx.beginPath(); ctx.arc(s.x, s.y - 18, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s.x - 6, s.y - 12); ctx.lineTo(s.x + 6, s.y - 12); ctx.lineTo(s.x, s.y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
+    ctx.fillText(dist + "m", s.x, s.y - 30);
+  } else {
+    const ang = Math.atan2(s.y - cy, s.x - cx);
+    const ex = cx + Math.cos(ang) * (canvas.width / 2 - margin);
+    const ey = cy + Math.sin(ang) * (canvas.height / 2 - margin);
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(ang);
+    ctx.fillStyle = "#e05353";
+    ctx.beginPath();
+    ctx.moveTo(13, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
+    ctx.fillText(dist + "m", ex, ey - 14);
+  }
+}
+
+function drawPlayer() {
+  const s = { x: canvas.width / 2, y: canvas.height / 2 };
+  const now = performance.now();
+
+  const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
+  if (aiming) {
+    const range = WEAPON_RANGE[currentWeaponKey()];
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(playerFacing);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    const coneRad = ATTACK_CONE_DEG * Math.PI / 180;
+    ctx.arc(0, 0, range, -coneRad, coneRad);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(224,83,83,0.22)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(224,83,83,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    const label = document.getElementById("range-label");
+    label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
+    label.classList.add("show");
+  } else {
+    document.getElementById("range-label").classList.remove("show");
+  }
+
+  const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
+  let by = s.y;
+  if (moving && !inCar) by += Math.sin(playerWalkPhase) * 3;
+
+  if (!inCar) {
+    drawLimbsAndWeapon(s.x, by, playerFacing, playerWalkPhase, currentWeaponKey(), now < attackPulseUntil);
+  }
+
+  const drawn = drawImageRotated(IMG.player, s.x, by, 32, playerFacing);
+  if (!drawn) {
+    ctx.fillStyle = inCar ? "#d9a441" : "#e8c07a";
+    ctx.beginPath(); ctx.arc(s.x, by, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#3b2a17"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (now < playerHitFlashUntil) drawHitFlash(s.x, by, 18);
+}
+
+// ==================== حلقه اصلی ====================
+let lastTime = performance.now();
+function loop() {
+  const now = performance.now();
+  const dt = Math.min(2.2, (now - lastTime) / 16.67);
+  lastTime = now;
+
+  if (state && !isDead && !isPanelOpen) {
+    updatePlayer(dt);
+    updateZombies(dt);
+  }
+
+  if (state) {
+    drawWorld();
+    drawCars();
+    drawZombies();
+    drawWaypoint();
+    drawPlayer();
+    updateHUD();
+
+    if (!isDead && !isPanelOpen) {
+      saveTimer += dt;
+      if (saveTimer > 300) { saveTimer = 0; saveState(); }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+function updateHUD() {
+  const p = state.player;
+  document.getElementById("bar-health").style.width = Math.max(0, p.health) + "%";
+  document.getElementById("bar-hunger").style.width = p.hunger + "%";
+  document.getElementById("bar-thirst").style.width = p.thirst + "%";
+  document.getElementById("bar-stamina").style.width = p.stamina + "%";
+}
+
+// ==================== شروع ====================
+(async function init() {
+  try {
+    await loadState();
+    document.getElementById("loading").style.display = "none";
+    lastZombieSpawn = performance.now();
+
+    if (!state.guideSeen) {
+      openPanel("help");
+      state.guideSeen = true;
+      saveState();
+    }
+
+    loop();
+  } catch (e) {
+    const el = document.getElementById("loading");
+    el.style.display = "flex";
+    el.style.fontSize = "13px";
+    el.style.padding = "20px";
+    el.textContent = "⚠️ خطا موقع شروع: " + (e && e.message ? e.message : e);
+  }
+})();
+
+addEventListener("blur", saveState);
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveState(); });
