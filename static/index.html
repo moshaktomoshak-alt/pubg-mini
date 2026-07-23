@@ -8,65 +8,60 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="rotate-prompt">
-    <div>
-      📱↻<br>
-      برای بازی، گوشیت رو افقی بچرخون
-    </div>
-  </div>
+  <div id="rotate-wrap">
+    <canvas id="game"></canvas>
 
-  <canvas id="game"></canvas>
-
-  <!-- HUD بالا -->
-  <div id="hud-top">
-    <div class="bar"><div class="bar-label">❤️</div><div class="bar-bg"><div id="bar-health" class="bar-fill health"></div></div></div>
-    <div class="bar"><div class="bar-label">🍗</div><div class="bar-bg"><div id="bar-hunger" class="bar-fill hunger"></div></div></div>
-    <div class="bar"><div class="bar-label">💧</div><div class="bar-bg"><div id="bar-thirst" class="bar-fill thirst"></div></div></div>
-    <div class="bar"><div class="bar-label">⚡</div><div class="bar-bg"><div id="bar-stamina" class="bar-fill stamina"></div></div></div>
-    <div id="hud-left-buttons">
-      <button id="btn-help">❓</button>
-      <button id="btn-gps">📍</button>
-    </div>
-  </div>
-
-  <div id="toast"></div>
-  <div id="range-label"></div>
-
-  <!-- جوی‌استیک حرکت (چپ) -->
-  <div id="joystick-zone">
-    <div id="joystick-base"><div id="joystick-stick"></div></div>
-  </div>
-
-  <!-- جوی‌استیک هدف‌گیری / حمله (راست) -->
-  <div id="aim-zone">
-    <div id="aim-base"><div id="aim-stick"></div></div>
-  </div>
-
-  <!-- دکمه تعامل (برداشتن منبع / سوار ماشین) -->
-  <div id="action-buttons">
-    <button id="btn-interact">✋</button>
-  </div>
-
-  <!-- منوی پایین (Craft / Build / Item) -->
-  <div id="bottom-menu">
-    <button data-panel="inventory">🎒 آیتم</button>
-    <button data-panel="craft">🛠️ ساخت</button>
-    <button data-panel="build">🏠 بنا</button>
-  </div>
-
-  <!-- پنل‌ها -->
-  <div id="panel-overlay" class="hidden">
-    <div id="panel-box">
-      <div id="panel-header">
-        <span id="panel-title"></span>
-        <button id="panel-close">✕</button>
+    <!-- HUD بالا -->
+    <div id="hud-top">
+      <div class="bar"><div class="bar-label">❤️</div><div class="bar-bg"><div id="bar-health" class="bar-fill health"></div></div></div>
+      <div class="bar"><div class="bar-label">🍗</div><div class="bar-bg"><div id="bar-hunger" class="bar-fill hunger"></div></div></div>
+      <div class="bar"><div class="bar-label">💧</div><div class="bar-bg"><div id="bar-thirst" class="bar-fill thirst"></div></div></div>
+      <div class="bar"><div class="bar-label">⚡</div><div class="bar-bg"><div id="bar-stamina" class="bar-fill stamina"></div></div></div>
+      <div id="hud-left-buttons">
+        <button id="btn-help">❓</button>
+        <button id="btn-gps">📍</button>
       </div>
-      <div id="panel-feedback"></div>
-      <div id="panel-content"></div>
     </div>
-  </div>
 
-  <div id="loading">در حال بارگذاری دنیا ...</div>
+    <div id="toast"></div>
+    <div id="range-label"></div>
+
+    <!-- جوی‌استیک حرکت (چپ) -->
+    <div id="joystick-zone">
+      <div id="joystick-base"><div id="joystick-stick"></div></div>
+    </div>
+
+    <!-- جوی‌استیک هدف‌گیری / حمله (راست) -->
+    <div id="aim-zone">
+      <div id="aim-base"><div id="aim-stick"></div></div>
+    </div>
+
+    <!-- دکمه تعامل (برداشتن منبع / سوار ماشین) -->
+    <div id="action-buttons">
+      <button id="btn-interact">✋</button>
+    </div>
+
+    <!-- منوی پایین (Craft / Build / Item) -->
+    <div id="bottom-menu">
+      <button data-panel="inventory">🎒 آیتم</button>
+      <button data-panel="craft">🛠️ ساخت</button>
+      <button data-panel="build">🏠 بنا</button>
+    </div>
+
+    <!-- پنل‌ها -->
+    <div id="panel-overlay" class="hidden">
+      <div id="panel-box">
+        <div id="panel-header">
+          <span id="panel-title"></span>
+          <button id="panel-close">✕</button>
+        </div>
+        <div id="panel-feedback"></div>
+        <div id="panel-content"></div>
+      </div>
+    </div>
+
+    <div id="loading">در حال بارگذاری دنیا ... (نسخه v7)</div>
+  </div>
 
   <script src="game.js"></script>
 </body>

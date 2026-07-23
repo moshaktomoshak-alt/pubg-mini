@@ -264,9 +264,27 @@ let attackPulseUntil = 0;
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+const rotateWrap = document.getElementById("rotate-wrap");
+function resize() { canvas.width = rotateWrap.clientWidth; canvas.height = rotateWrap.clientHeight; }
 addEventListener("resize", resize);
+addEventListener("orientationchange", resize);
 resize();
+
+// وقتی گوشی عمودیه، کل بازی با CSS ۹۰ درجه می‌چرخه تا افقی دیده بشه؛
+// ولی رویدادهای لمسی هنوز تو مختصات واقعیِ (عمودیِ) صفحه میان، پس باید تبدیلشون کنیم
+// به مختصات محلیِ داخل rotate-wrap (که همیشه افقیه).
+function isForcedPortrait() { return window.innerWidth < window.innerHeight; }
+
+function physicalDeltaToLocal(dpx, dpy) {
+  if (!isForcedPortrait()) return { x: dpx, y: dpy };
+  return { x: dpy, y: -dpx };
+}
+
+function physicalPointToLocal(px, py) {
+  if (!isForcedPortrait()) return { x: px, y: py };
+  const w = window.innerWidth;
+  return { x: py, y: w - px };
+}
 
 // ==================== تصادفی قطعی ====================
 function hash2(x, y, seed) {
@@ -471,7 +489,8 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
   const MAX = 31;
 
   function move(clientX, clientY) {
-    let dx = clientX - startX, dy = clientY - startY;
+    const raw = physicalDeltaToLocal(clientX - startX, clientY - startY);
+    let dx = raw.x, dy = raw.y;
     const dist = Math.hypot(dx, dy);
     if (dist > MAX) { dx = dx / dist * MAX; dy = dy / dist * MAX; }
     stick.style.left = 31 + dx + "px";
@@ -514,11 +533,15 @@ setupStick("aim-zone", "aim-stick",
 );
 
 // ==================== تپ روی صحنه ====================
-canvas.addEventListener("click", (e) => onTapScreen(e.clientX, e.clientY));
+canvas.addEventListener("click", (e) => {
+  const p = physicalPointToLocal(e.clientX, e.clientY);
+  onTapScreen(p.x, p.y);
+});
 canvas.addEventListener("touchstart", (e) => {
   if (e.target !== canvas) return;
   const t = e.touches[0];
-  onTapScreen(t.clientX, t.clientY);
+  const p = physicalPointToLocal(t.clientX, t.clientY);
+  onTapScreen(p.x, p.y);
 }, { passive: true });
 
 function screenToWorld(sx, sy) {
@@ -1072,7 +1095,7 @@ function drawZombies() {
 
     const sheet = ZOMBIE_SHEETS[z.type] || ZOMBIE_SHEETS.zombie1;
     const frameIdx = z.alerted ? Math.floor(z.walkPhase * 2) % sheet.frames : 0;
-    const drawn = drawSpriteFrameRotated(IMG[z.type || "zombie1"], sheet, frameIdx, s.x, by, 34, z.facing || 0);
+    const drawn = drawSpriteFrameRotated(IMG[z.type || "zombie1"], sheet, frameIdx, s.x, by, 34, (z.facing || 0) + Math.PI / 2);
     if (!drawn) {
       ctx.fillStyle = z.alerted ? "#3f8f4a" : "#5c8f63";
       ctx.beginPath(); ctx.arc(s.x, by, 13, 0, Math.PI * 2); ctx.fill();
