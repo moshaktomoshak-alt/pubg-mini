@@ -264,6 +264,7 @@ let attackPulseUntil = 0;
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const loadingEl = document.getElementById("loading");
 const rotateWrap = document.getElementById("rotate-wrap");
 function resize() { canvas.width = rotateWrap.clientWidth; canvas.height = rotateWrap.clientHeight; }
 addEventListener("resize", resize);
