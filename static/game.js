@@ -838,8 +838,27 @@ function nearestResource() {
 
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
+
+  // 🔥 رفع باگ: اگر سوار ماشین هستیم، مستقیم پنل همون ماشین رو باز کن
+  if (inCar && drivingCarKey) {
+    openPanel("car", drivingCarKey);
+    return;
+  }
+
   const car = nearestCar();
   if (car) { openPanel("car", car.key); return; }
+
+  const res = nearestResource();
+  if (res) {
+    const def = RESOURCE_NODES[res.res];
+    const amt = def.amount[0] + Math.floor(Math.random() * (def.amount[1] - def.amount[0] + 1));
+    state.inventory[def.gives] = (state.inventory[def.gives] || 0) + amt;
+    state.modifications[modKey(res.tx, res.ty)] = { harvested: true };
+    toast(`+${amt} ${ITEM_FA[def.gives]}`);
+    return;
+  }
+  toast("چیزی برای تعامل نزدیک نیست");
+}
 
   const res = nearestResource();
   if (res) {
