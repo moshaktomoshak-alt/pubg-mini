@@ -83,15 +83,6 @@ const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
 
-// ==================== تنظیمات سگ ====================
-const DOG_MAX_HEALTH = 100;
-const DOG_FOLLOW_DIST = 60;
-const DOG_ATTACK_RANGE = 40;
-const DOG_ATTACK_DAMAGE_PERCENT = 0.2; // 20% جان زامبی
-const DOG_ATTACK_COOLDOWN = 1000; // میلی‌ثانیه
-const DOG_FOOD_HEAL = 30;
-const DOG_SIGHT_RANGE = 200;
-
 const HELP_TEXT_HTML = `
   <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
   <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
@@ -101,7 +92,6 @@ const HELP_TEXT_HTML = `
   <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
   <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
   <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
-  <div class="help-item">🐕 <b>سگ همراه:</b> همیشه با توئه، ازت دفاع می‌کنه و به زامبی‌ها حمله می‌کنه. با غذا بهش جون بده.</div>
   <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
   <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
@@ -126,7 +116,6 @@ const IMG_SRC = {
   engine_green: "engine_green.png",
   engine_black: "engine_black.png",
   engine_orange: "engine_orange.png",
-  dog_sheet: "spritesheet.png", // اسپرایت‌شیت سگ
 };
 
 const IMG = {};
@@ -136,45 +125,6 @@ for (const [key, src] of Object.entries(IMG_SRC)) {
   IMG[key] = im;
 }
 
-// ==================== تعریف اسپرایت‌شیت سگ ====================
-const DOG_SHEET = {
-  frameW: 256,
-  frameH: 256,
-  cols: 4,
-  rows: 6,
-  framesPerCol: 6,
-  // ستون‌ها: 0=عمودی1, 1=افقی1, 2=عمودی2, 3=افقی2
-};
-
-function getDogFrameIndex(direction, walkPhase) {
-  // direction: 0=up, 1=left, 2=down, 3=right
-  const col = direction;
-  const row = Math.floor(walkPhase * DOG_SHEET.framesPerCol) % DOG_SHEET.framesPerCol;
-  return row * DOG_SHEET.cols + col;
-}
-
-function drawDog(x, y, targetH, direction, walkPhase, wounded) {
-  const im = IMG.dog_sheet;
-  if (!imgReady(im)) return false;
-  const scale = targetH / DOG_SHEET.frameH;
-  const dw = DOG_SHEET.frameW * scale;
-  const dh = DOG_SHEET.frameH * scale;
-  const frameIdx = getDogFrameIndex(direction, walkPhase);
-  const col = frameIdx % DOG_SHEET.cols;
-  const row = Math.floor(frameIdx / DOG_SHEET.cols);
-  const sx = col * DOG_SHEET.frameW;
-  const sy = row * DOG_SHEET.frameH;
-  ctx.save();
-  if (wounded) {
-    ctx.globalAlpha = 0.5;
-    ctx.filter = "grayscale(0.8)";
-  }
-  ctx.drawImage(im, sx, sy, DOG_SHEET.frameW, DOG_SHEET.frameH, x - dw / 2, y - dh / 2, dw, dh);
-  ctx.restore();
-  return true;
-}
-
-// ==================== بقیه توابع کمکی ====================
 function imgReady(im) { return im && im.complete && im.naturalWidth > 0; }
 
 function drawImageCentered(im, x, y, targetH) {
@@ -199,7 +149,7 @@ function drawImageRotated(im, x, y, targetH, angle) {
   return true;
 }
 
-// اسپرایت‌شیت زامبی
+// اسپرایت‌شیت زامبی: ۸ فریم واقعی از چرخه‌ی راه‌رفتن، کنار هم به‌صورت افقی
 const ZOMBIE_SHEETS = {
   zombie1: { frames: 8, w: 66, h: 72 },
   zombie2: { frames: 8, w: 51, h: 72 },
@@ -227,19 +177,24 @@ function drawHitFlash(x, y, radius) {
   ctx.restore();
 }
 
+// دست و پای ساده‌ی رویه‌ای (چون اسپرایت‌ها لایه‌ی جدا برای عضو ندارن) + سلاح تو دست
+// قرارداد محور: جهت جلو = +X (هم‌راستا با مخروط حمله)، پهلو = +Y
 function drawLimbsAndWeapon(x, y, facing, walkPhase, weaponKey, attackPulse) {
   const stride = Math.sin(walkPhase) * 5;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(facing);
+  // پاها: کمی عقب‌تر از مرکز، کنار هم (چپ/راست)، با قدم‌زدن جلو-عقب متناوب
   ctx.fillStyle = "#3b2a17";
   ctx.fillRect(-11 + stride * 0.5, -6, 7, 5);
   ctx.fillRect(-11 - stride * 0.5, 1, 7, 5);
+  // دست‌ها: یکی عقب، یکی جلو (نوسان راه‌رفتن)
   ctx.fillStyle = "#e8c07a";
   const armSwing = Math.sin(walkPhase + Math.PI) * 4;
   ctx.beginPath(); ctx.arc(-9, armSwing, 4, 0, Math.PI * 2); ctx.fill();
   const handForwardX = attackPulse ? 20 : 9;
   ctx.beginPath(); ctx.arc(handForwardX, -armSwing, 4, 0, Math.PI * 2); ctx.fill();
+  // سلاح تو دست جلویی
   if (weaponKey === "knife" && imgReady(IMG.knife_user)) {
     ctx.save();
     ctx.translate(handForwardX + 6, -armSwing);
@@ -257,6 +212,21 @@ function drawLimbsAndWeapon(x, y, facing, walkPhase, weaponKey, attackPulse) {
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+function drawZombieLimbs(x, y, facing, walkPhase) {
+  const stride = Math.sin(walkPhase) * 4;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(facing);
+  ctx.fillStyle = "#2f5d33";
+  ctx.fillRect(-10 + stride * 0.5, -6, 7, 5);
+  ctx.fillRect(-10 - stride * 0.5, 1, 7, 5);
+  // دست‌های دراز به جلو (حالت کلاسیک زامبی)
+  ctx.fillStyle = "#4a7a4e";
+  ctx.beginPath(); ctx.arc(11, -6, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(11, 6, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
@@ -285,15 +255,12 @@ let currentCarKey = null;
 let drivingCarKey = null;
 let isDead = false;
 let isPanelOpen = false;
-let isHidden = false;
+let isHidden = false; // وقتی صفحه/تب دیده نمی‌شه (پس‌زمینه یا بسته)، بازی کاملاً متوقف می‌شه
 
 let playerFacing = Math.PI / 2;
 let lastAttackTime = 0;
 let playerHitFlashUntil = 0;
 let attackPulseUntil = 0;
-
-// وضعیت سگ (همیشه در state ذخیره میشه)
-let dog = null;
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -304,6 +271,9 @@ addEventListener("resize", resize);
 addEventListener("orientationchange", resize);
 resize();
 
+// وقتی گوشی عمودیه، کل بازی با CSS ۹۰ درجه می‌چرخه تا افقی دیده بشه؛
+// ولی رویدادهای لمسی هنوز تو مختصات واقعیِ (عمودیِ) صفحه میان، پس باید تبدیلشون کنیم
+// به مختصات محلیِ داخل rotate-wrap (که همیشه افقیه).
 function isForcedPortrait() { return window.innerWidth < window.innerHeight; }
 
 function physicalDeltaToLocal(dpx, dpy) {
@@ -365,7 +335,7 @@ function moveWithCollision(entity, dx, dy, solidFn) {
   }
 }
 
-// ==================== ماشین‌ها ====================
+// ==================== ماشین‌های پخش‌شده تو نقشه ====================
 function sectorCarInfo(sx, sy) {
   const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
   if (h > CAR_SECTOR_CHANCE) return null;
@@ -399,6 +369,9 @@ function getAllNearbyCars() {
     }
   }
   for (const c of base) map.set(c.key, c);
+
+  // ماشینی که قبلاً روندیمش و جای دیگه پارک شده، حتی اگه از سکتورهای اطراف فعلی دور باشه،
+  // همیشه باید پیدا بشه (وگرنه بعد از تموم شدن بنزین دور از خونه‌ی اصلیش، غیب می‌شد)
   for (const key of Object.keys(state.cars)) {
     const saved = state.cars[key];
     if (!saved || saved.posX === undefined) continue;
@@ -455,20 +428,6 @@ function normalizeState() {
   }
   if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
   if (state.waypoint === undefined) state.waypoint = null;
-  // مقداردهی سگ
-  if (!state.dog) {
-    state.dog = {
-      x: state.player.x,
-      y: state.player.y - 40,
-      health: DOG_MAX_HEALTH,
-      maxHealth: DOG_MAX_HEALTH,
-      isWounded: false,
-      facing: 0,
-      walkPhase: 0,
-      attackCooldown: 0,
-    };
-  }
-  dog = state.dog;
 }
 
 function freshLocalState() {
@@ -478,16 +437,6 @@ function freshLocalState() {
     inventory: {}, equipped: null,
     cars: { main: { repaired: false, fuel: 0, health: 100 } },
     modifications: {}, guideSeen: false, waypoint: null,
-    dog: {
-      x: 0,
-      y: -40,
-      health: DOG_MAX_HEALTH,
-      maxHealth: DOG_MAX_HEALTH,
-      isWounded: false,
-      facing: 0,
-      walkPhase: 0,
-      attackCooldown: 0,
-    },
   };
 }
 
@@ -693,12 +642,6 @@ function openPanel(kind, carKey) {
         b.textContent = "مصرف";
         b.onclick = () => { consumeItem(k); openPanel("inventory"); };
         row.appendChild(b);
-      } else if (k === "food") {
-        // دکمه‌ی غذا دادن به سگ
-        const b = document.createElement("button");
-        b.textContent = "غذا به سگ";
-        b.onclick = () => { feedDog(); openPanel("inventory"); };
-        row.appendChild(b);
       }
       content.appendChild(row);
     }
@@ -726,7 +669,7 @@ function openPanel(kind, carKey) {
   }
 }
 
-// ==================== پنل ماشین ====================
+// ==================== پنل اختصاصی ماشین ====================
 function renderCarPanel(title, content, carKey) {
   currentCarKey = carKey || "main";
   const car = getCarState(currentCarKey);
@@ -817,6 +760,7 @@ function renderCarPanel(title, content, carKey) {
   content.appendChild(rideRow);
 }
 
+// وقتی پیاده می‌شی (دستی، بی‌بنزینی، یا خراب شدن ماشین) دقیقاً همینجا پارک می‌مونه
 function exitCar() {
   if (drivingCarKey) {
     const cs = getCarState(drivingCarKey);
@@ -849,28 +793,6 @@ function consumeItem(k) {
   if (k === "water") state.player.thirst = Math.min(100, state.player.thirst + 30);
   panelFeedback(ITEM_FA[k] + " مصرف شد ✅");
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
-}
-
-// ==================== غذا دادن به سگ ====================
-function feedDog() {
-  if (!dog) return;
-  if ((state.inventory.food || 0) <= 0) {
-    toast("غذا نداری!");
-    return;
-  }
-  if (dog.health >= DOG_MAX_HEALTH) {
-    toast("سگ سالمه!");
-    return;
-  }
-  state.inventory.food -= 1;
-  dog.health = Math.min(DOG_MAX_HEALTH, dog.health + DOG_FOOD_HEAL);
-  if (dog.isWounded && dog.health > 0) {
-    dog.isWounded = false;
-    toast("سگ خوب شد! 🐕");
-  } else {
-    toast("سگ غذا خورد! +۳۰ جان 🐕");
-  }
-  panelFeedback("به سگ غذا دادی ✅");
 }
 
 // ==================== toast ====================
@@ -931,7 +853,7 @@ function doInteract() {
   toast("چیزی برای تعامل نزدیک نیست");
 }
 
-// ==================== حمله ====================
+// ==================== حمله‌ی مبتنی بر جهت ====================
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
@@ -1021,7 +943,7 @@ function updateZombies(dt) {
   }
 }
 
-// ==================== حرکت بازیکن ====================
+// ==================== حرکت و جهت بازیکن ====================
 let playerWalkPhase = 0;
 function updatePlayer(dt) {
   const p = state.player;
@@ -1067,64 +989,6 @@ function updatePlayer(dt) {
   if (p.health <= 0 && !isDead) onDeath();
 }
 
-// ==================== حرکت سگ ====================
-function updateDog(dt) {
-  if (!dog || dog.isWounded) return;
-
-  const p = state.player;
-  const dx = p.x - dog.x;
-  const dy = p.y - dog.y;
-  const dist = Math.hypot(dx, dy) || 1;
-
-  // دنبال کردن بازیکن
-  if (dist > DOG_FOLLOW_DIST) {
-    const speed = 2.0;
-    const moveX = (dx / dist) * speed * dt;
-    const moveY = (dy / dist) * speed * dt;
-    moveWithCollision(dog, moveX, moveY, isSolidForPlayer);
-    dog.walkPhase += dt * 0.3;
-  } else {
-    dog.walkPhase += dt * 0.1;
-  }
-
-  // جهت سگ بر اساس حرکت یا رو به بازیکن
-  if (dist > 5) {
-    dog.facing = Math.atan2(dy, dx);
-  }
-
-  // حمله به زامبی
-  const now = performance.now();
-  if (now - dog.attackCooldown > DOG_ATTACK_COOLDOWN) {
-    let target = null;
-    let bestD = DOG_ATTACK_RANGE;
-    for (const z of zombies) {
-      const dzx = z.x - dog.x;
-      const dzy = z.y - dog.y;
-      const d = Math.hypot(dzx, dzy);
-      if (d < DOG_ATTACK_RANGE) {
-        const ang = Math.atan2(dzy, dzx);
-        if (angleDiffDeg(ang, dog.facing) < 60) {
-          if (d < bestD) { bestD = d; target = z; }
-        }
-      }
-    }
-    if (target) {
-      const dmg = Math.ceil(target.hp * DOG_ATTACK_DAMAGE_PERCENT);
-      target.hp -= dmg;
-      target.hitFlashUntil = now + 200;
-      // عقب‌زدن زامبی
-      const pushAngle = Math.atan2(target.y - dog.y, target.x - dog.x);
-      target.x += Math.cos(pushAngle) * 10;
-      target.y += Math.sin(pushAngle) * 10;
-      dog.attackCooldown = now;
-      if (target.hp <= 0) {
-        zombies = zombies.filter((z) => z !== target);
-        toast("سگ زامبی رو نابود کرد! 🐕💥");
-      }
-    }
-  }
-}
-
 // ==================== دوربین و رندر ====================
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
 
@@ -1149,6 +1013,7 @@ function drawWorld() {
       const s = worldToScreen(wx, wy);
       if (s.x < -TILE || s.x > canvas.width + TILE || s.y < -TILE || s.y > canvas.height + TILE) continue;
 
+      // زمین یکدست سبز با کمی تنوع رنگ ملایم (بدون نقشه‌ی خاکی به‌هم‌ریخته)
       const g = hash2(tx, ty, state.worldSeed + 999);
       ctx.fillStyle = g < 0.15 ? "#4f9345" : (g > 0.9 ? "#457c3c" : "#4a8a3f");
       ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
@@ -1203,7 +1068,7 @@ function drawWorld() {
 function drawCars() {
   const cars = getAllNearbyCars();
   for (const c of cars) {
-    if (inCar && c.key === drivingCarKey) continue;
+    if (inCar && c.key === drivingCarKey) continue; // این ماشین الان زیر پلیره، جدا رسمش نمی‌کنیم
     const s = worldToScreen(c.x, c.y);
     if (s.x < -60 || s.x > canvas.width + 60 || s.y < -60 || s.y > canvas.height + 60) continue;
     const cs = getCarState(c.key);
@@ -1245,38 +1110,6 @@ function drawZombies() {
     }
     ctx.fillStyle = "#111"; ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
   }
-}
-
-function drawDog() {
-  if (!dog) return;
-  const s = worldToScreen(dog.x, dog.y);
-  const targetH = 40;
-  // جهت سگ برای انتخاب ستون: 0=up, 1=left, 2=down, 3=right
-  let dir = 0;
-  if (dog.isWounded) {
-    dir = 0; // حالت زخمی: ستون اول (ایستاده)
-  } else {
-    const ang = dog.facing || 0;
-    // تبدیل زاویه به یکی از ۴ جهت اصلی
-    const deg = ((ang * 180 / Math.PI) + 360) % 360;
-    if (deg >= 45 && deg < 135) dir = 2; // down
-    else if (deg >= 135 && deg < 225) dir = 1; // left
-    else if (deg >= 225 && deg < 315) dir = 3; // right
-    else dir = 0; // up
-  }
-  const wounded = dog.isWounded || dog.health <= 0;
-  drawDog(s.x, s.y, targetH, dir, dog.walkPhase, wounded);
-
-  // نوار سلامتی سگ
-  const barW = 30;
-  const barH = 4;
-  const barX = s.x - barW / 2;
-  const barY = s.y - targetH / 2 - 8;
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fillRect(barX, barY, barW, barH);
-  const healthPercent = Math.max(0, dog.health / DOG_MAX_HEALTH);
-  ctx.fillStyle = dog.isWounded ? "#e05353" : "#58c46b";
-  ctx.fillRect(barX, barY, barW * healthPercent, barH);
 }
 
 function drawWaypoint() {
@@ -1349,11 +1182,13 @@ function drawPlayer() {
     const drivingCar = getCarState(drivingCarKey || "main");
     const carColor = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main"));
     const carImg = IMG[(carColor && carColor.color) || "engine_orange"];
+    // اسپرایت موتور پیش‌فرض رو به بالاست، پس ۹۰ درجه اضافه می‌کنیم تا با جهت واقعی حرکت یکی بشه
     const drawn = drawImageRotated(carImg, s.x, by, 46, playerFacing + Math.PI / 2);
     if (!drawn) {
       ctx.fillStyle = "#d9a441";
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
     }
+    // پلیر رو سوار بر موتور نشون بده (بدون پا و اسلحه، چون نشسته)
     drawImageRotated(IMG.player, s.x, by, 22, playerFacing);
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
     ctx.fillText(`⛽${Math.round(drivingCar.fuel)}%`, s.x, by - 34);
@@ -1381,14 +1216,12 @@ function loop() {
   if (state && !isDead && !isPanelOpen && !isHidden) {
     updatePlayer(dt);
     updateZombies(dt);
-    updateDog(dt);
   }
 
   if (state) {
     drawWorld();
     drawCars();
     drawZombies();
-    drawDog();
     drawWaypoint();
     drawPlayer();
     updateHUD();
@@ -1407,23 +1240,6 @@ function updateHUD() {
   document.getElementById("bar-hunger").style.width = p.hunger + "%";
   document.getElementById("bar-thirst").style.width = p.thirst + "%";
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
-
-  // نوار سلامتی سگ (در کنار HUD)
-  let dogBar = document.getElementById("dog-bar");
-  if (!dogBar) {
-    const hud = document.getElementById("hud-top");
-    const div = document.createElement("div");
-    div.className = "bar";
-    div.id = "dog-bar-container";
-    div.innerHTML = `<div class="bar-label">🐕</div><div class="bar-bg"><div id="dog-bar" class="bar-fill health"></div></div>`;
-    hud.appendChild(div);
-    dogBar = document.getElementById("dog-bar");
-  }
-  if (dog) {
-    const healthPercent = Math.max(0, dog.health / DOG_MAX_HEALTH) * 100;
-    dogBar.style.width = healthPercent + "%";
-    dogBar.style.backgroundColor = dog.isWounded ? "#e05353" : "#58c46b";
-  }
 }
 
 // ==================== شروع ====================
@@ -1456,6 +1272,6 @@ document.addEventListener("visibilitychange", () => {
     saveState();
   } else {
     isHidden = false;
-    lastTime = performance.now();
+    lastTime = performance.now(); // جلوگیری از یه dt غول‌پیکر که باعث پرش ناگهانی بشه
   }
 });
