@@ -10,7 +10,7 @@ const DOG_FOLLOW_DISTANCE = 60;
 let dog = null;
 
 const DOG_HELP_TEXT = `
-<div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت (🌽) درمانش کن</div>
+<div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت () درمانش کن</div>
 `;
 
 // ==================== رسم سگ از نمای بالا ====================
@@ -23,7 +23,28 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   const darkColor = isDowned ? "#6B5340" : "#8B6F47";
   const size = 14;
 
-  // بدن (بیضی)
+  // ✅ اول: پاها (زیر بدن)
+  if (!isDowned) {
+    const legOffset = Math.sin(walkPhase) * 3;
+    ctx.fillStyle = darkColor;
+    // پای چپ جلو
+    ctx.fillRect(size * 0.3, -size * 0.5 + legOffset, size * 0.25, size * 0.3);
+    // پای راست جلو
+    ctx.fillRect(size * 0.3, size * 0.2 - legOffset, size * 0.25, size * 0.3);
+    // پای چپ عقب
+    ctx.fillRect(-size * 0.5, -size * 0.5 - legOffset, size * 0.25, size * 0.3);
+    // پای راست عقب
+    ctx.fillRect(-size * 0.5, size * 0.2 + legOffset, size * 0.25, size * 0.3);
+  } else {
+    // در حالت زخمی، پاها جمع می‌شن
+    ctx.fillStyle = darkColor;
+    ctx.fillRect(size * 0.2, -size * 0.4, size * 0.2, size * 0.25);
+    ctx.fillRect(size * 0.2, size * 0.15, size * 0.2, size * 0.25);
+    ctx.fillRect(-size * 0.4, -size * 0.4, size * 0.2, size * 0.25);
+    ctx.fillRect(-size * 0.4, size * 0.15, size * 0.2, size * 0.25);
+  }
+
+  // ✅ دوم: بدن (روی پاها)
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, size, size * 0.6, 0, 0, Math.PI * 2);
@@ -56,27 +77,6 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
     ctx.moveTo(0, -size * 0.1);
     ctx.lineTo(0, size * 0.1);
     ctx.stroke();
-  }
-
-  // چهار تا پا با انیمیشن
-  if (!isDowned) {
-    const legOffset = Math.sin(walkPhase) * 3;
-    ctx.fillStyle = darkColor;
-    // پای چپ جلو
-    ctx.fillRect(size * 0.3, -size * 0.5 + legOffset, size * 0.25, size * 0.3);
-    // پای راست جلو
-    ctx.fillRect(size * 0.3, size * 0.2 - legOffset, size * 0.25, size * 0.3);
-    // پای چپ عقب
-    ctx.fillRect(-size * 0.5, -size * 0.5 - legOffset, size * 0.25, size * 0.3);
-    // پای راست عقب
-    ctx.fillRect(-size * 0.5, size * 0.2 + legOffset, size * 0.25, size * 0.3);
-  } else {
-    // در حالت زخمی، پاها جمع می‌شن
-    ctx.fillStyle = darkColor;
-    ctx.fillRect(size * 0.2, -size * 0.4, size * 0.2, size * 0.25);
-    ctx.fillRect(size * 0.2, size * 0.15, size * 0.2, size * 0.25);
-    ctx.fillRect(-size * 0.4, -size * 0.4, size * 0.2, size * 0.25);
-    ctx.fillRect(-size * 0.4, size * 0.15, size * 0.2, size * 0.25);
   }
 
   // دم
