@@ -6,11 +6,13 @@ const DOG_ATTACK_DAMAGE = 18;
 const DOG_ATTACK_INTERVAL = 800;
 const DOG_MAX_HP = 100;
 const DOG_FOLLOW_DISTANCE = 60;
+const DOG_LOOT_CHANCE = 0.3;
+const DOG_ALERT_RANGE = 150;
 
 let dog = null;
 
 const DOG_HELP_TEXT = `
-<div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت () درمانش کن</div>
+<div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت (🌽) درمانش کن</div>
 `;
 
 // ==================== رسم سگ از نمای بالا ====================
@@ -23,36 +25,29 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   const darkColor = isDowned ? "#6B5340" : "#8B6F47";
   const size = 14;
 
-  // ✅ اول: پاها (زیر بدن) - حالا پاهای جلو جلوتر قرار گرفتن
+  // پاها (زیر بدن)
   if (!isDowned) {
     const legOffset = Math.sin(walkPhase) * 3;
     ctx.fillStyle = darkColor;
-    // پای چپ جلو (جلوتر، نزدیک سر)
     ctx.fillRect(size * 0.6, -size * 0.55 + legOffset, size * 0.3, size * 0.35);
-    // پای راست جلو
     ctx.fillRect(size * 0.6, size * 0.2 - legOffset, size * 0.3, size * 0.35);
-    // پای چپ عقب
     ctx.fillRect(-size * 0.6, -size * 0.55 - legOffset, size * 0.3, size * 0.35);
-    // پای راست عقب
     ctx.fillRect(-size * 0.6, size * 0.2 + legOffset, size * 0.3, size * 0.35);
   } else {
-    // در حالت زخمی، پاها جمع می‌شن
     ctx.fillStyle = darkColor;
-    // پاهای جلو جمع‌شده
     ctx.fillRect(size * 0.4, -size * 0.45, size * 0.25, size * 0.25);
     ctx.fillRect(size * 0.4, size * 0.2, size * 0.25, size * 0.25);
-    // پاهای عقب جمع‌شده
     ctx.fillRect(-size * 0.5, -size * 0.45, size * 0.25, size * 0.25);
     ctx.fillRect(-size * 0.5, size * 0.2, size * 0.25, size * 0.25);
   }
 
-  // ✅ دوم: بدن (روی پاها)
+  // بدن
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, size, size * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // سر (دایره جلوتر)
+  // سر
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.arc(size * 0.7, 0, size * 0.45, 0, Math.PI * 2);
@@ -67,7 +62,7 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   ctx.ellipse(size * 0.5, size * 0.35, size * 0.2, size * 0.3, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // خط‌های کمر (فقط در حالت زخمی)
+  // خط‌های کمر (فقط زخمی)
   if (isDowned) {
     ctx.strokeStyle = "#4a3520";
     ctx.lineWidth = 1.5;
@@ -98,7 +93,6 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
     ctx.arc(size * 0.9, size * 0.15, size * 0.08, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // چشم‌های بسته (X)
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -189,6 +183,7 @@ function drawDog() {
   const s = worldToScreen(dog.x, dog.y);
   drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned);
 
+  // نوار سلامت
   const barWidth = 30;
   const barHeight = 4;
   const hpPercent = dog.hp / DOG_MAX_HP;
@@ -205,6 +200,36 @@ function drawDog() {
   ctx.fillText("🐕", s.x, s.y - 28);
 }
 
+// ==================== دایره هشدار سگ (capability جدید) ====================
+function drawDogAlert() {
+  if (!dog || dog.isDowned || !state.dogAlertEnabled) return;
+  for (const z of zombies) {
+    const zd = Math.hypot(z.x - dog.x, z.y - dog.y);
+    if (zd < DOG_ALERT_RANGE && z.alerted) {
+      const s = worldToScreen(dog.x, dog.y);
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 50, 50, 0.7)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, DOG_ALERT_RANGE * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+  }
+}
+
+// ==================== قابلیت برداشتن اشیا توسط سگ ====================
+function dogLoot(resourceType) {
+  if (!dog || dog.isDowned || !state.dogLootEnabled) return;
+  if (Math.random() < DOG_LOOT_CHANCE) {
+    const bonusAmount = 1;
+    state.inventory[resourceType] = (state.inventory[resourceType] || 0) + bonusAmount;
+    toast(`سگت +${bonusAmount} ${ITEM_FA[resourceType] || resourceType} پیدا کرد! 🐕`);
+  }
+}
+
 // ==================== درمان سگ ====================
 function healDog(foodType) {
   if (!dog || !dog.isDowned) return;
@@ -218,6 +243,26 @@ function healDog(foodType) {
 
   panelFeedback("سگ درمان شد! 🐕❤️");
   toast("سگت دوباره زنده شد! 🐕");
+}
+
+// ==================== Toggle قابلیت‌های سگ ====================
+function toggleDogLoot() {
+  state.dogLootEnabled = !state.dogLootEnabled;
+  toast(state.dogLootEnabled ? "برداشتن اشیا توسط سگ فعال شد 🐕" : "برداشتن اشیا غیرفعال شد");
+  updateDogToggleButtons();
+}
+
+function toggleDogAlert() {
+  state.dogAlertEnabled = !state.dogAlertEnabled;
+  toast(state.dogAlertEnabled ? "هشدار زامبی فعال شد 🐕" : "هشدار زامبی غیرفعال شد");
+  updateDogToggleButtons();
+}
+
+function updateDogToggleButtons() {
+  const lootBtn = document.getElementById("btn-dog-loot");
+  const alertBtn = document.getElementById("btn-dog-alert");
+  if (lootBtn) lootBtn.classList.toggle("active", state.dogLootEnabled);
+  if (alertBtn) alertBtn.classList.toggle("active", state.dogAlertEnabled);
 }
 
 // ==================== ایجاد سگ ====================
