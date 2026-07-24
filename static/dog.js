@@ -183,7 +183,6 @@ function drawDog() {
   const s = worldToScreen(dog.x, dog.y);
   drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned);
 
-  // نوار سلامت
   const barWidth = 30;
   const barHeight = 4;
   const hpPercent = dog.hp / DOG_MAX_HP;
@@ -200,7 +199,7 @@ function drawDog() {
   ctx.fillText("🐕", s.x, s.y - 28);
 }
 
-// ==================== دایره هشدار سگ (capability جدید) ====================
+// ==================== دایره هشدار سگ ====================
 function drawDogAlert() {
   if (!dog || dog.isDowned || !state.dogAlertEnabled) return;
   for (const z of zombies) {
