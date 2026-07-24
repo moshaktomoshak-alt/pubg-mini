@@ -23,25 +23,27 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   const darkColor = isDowned ? "#6B5340" : "#8B6F47";
   const size = 14;
 
-  // ✅ اول: پاها (زیر بدن)
+  // ✅ اول: پاها (زیر بدن) - حالا پاهای جلو جلوتر قرار گرفتن
   if (!isDowned) {
     const legOffset = Math.sin(walkPhase) * 3;
     ctx.fillStyle = darkColor;
-    // پای چپ جلو
-    ctx.fillRect(size * 0.3, -size * 0.5 + legOffset, size * 0.25, size * 0.3);
+    // پای چپ جلو (جلوتر، نزدیک سر)
+    ctx.fillRect(size * 0.6, -size * 0.55 + legOffset, size * 0.3, size * 0.35);
     // پای راست جلو
-    ctx.fillRect(size * 0.3, size * 0.2 - legOffset, size * 0.25, size * 0.3);
+    ctx.fillRect(size * 0.6, size * 0.2 - legOffset, size * 0.3, size * 0.35);
     // پای چپ عقب
-    ctx.fillRect(-size * 0.5, -size * 0.5 - legOffset, size * 0.25, size * 0.3);
+    ctx.fillRect(-size * 0.6, -size * 0.55 - legOffset, size * 0.3, size * 0.35);
     // پای راست عقب
-    ctx.fillRect(-size * 0.5, size * 0.2 + legOffset, size * 0.25, size * 0.3);
+    ctx.fillRect(-size * 0.6, size * 0.2 + legOffset, size * 0.3, size * 0.35);
   } else {
     // در حالت زخمی، پاها جمع می‌شن
     ctx.fillStyle = darkColor;
-    ctx.fillRect(size * 0.2, -size * 0.4, size * 0.2, size * 0.25);
-    ctx.fillRect(size * 0.2, size * 0.15, size * 0.2, size * 0.25);
-    ctx.fillRect(-size * 0.4, -size * 0.4, size * 0.2, size * 0.25);
-    ctx.fillRect(-size * 0.4, size * 0.15, size * 0.2, size * 0.25);
+    // پاهای جلو جمع‌شده
+    ctx.fillRect(size * 0.4, -size * 0.45, size * 0.25, size * 0.25);
+    ctx.fillRect(size * 0.4, size * 0.2, size * 0.25, size * 0.25);
+    // پاهای عقب جمع‌شده
+    ctx.fillRect(-size * 0.5, -size * 0.45, size * 0.25, size * 0.25);
+    ctx.fillRect(-size * 0.5, size * 0.2, size * 0.25, size * 0.25);
   }
 
   // ✅ دوم: بدن (روی پاها)
