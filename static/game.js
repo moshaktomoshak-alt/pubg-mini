@@ -25,12 +25,12 @@ const RESOURCE_DENSITY = 0.065;
 
 const RECIPES = {
   craft: [
-    { id: "axe",     name: "تبر",        need: { wood: 5 },              give: { axe: 1 },     info: "دمیج 25 — برد 70" },
-    { id: "pick",    name: "کلنگ",       need: { wood: 3, stone: 5 },    give: { pick: 1 },    info: "دمیج 20 — برد 65" },
-    { id: "knife",   name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 },   info: "دمیج 35 — برد 60" },
-    { id: "wrench",  name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },  info: "دمیج 15 — برد 55 — همچنین برای تعمیر بدنه ماشین" },
-    { id: "bandage", name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
-    { id: "fuel_can",name: "قوطی بنزین", need: { corn: 4 },              give: { fuel_can: 1 },info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
+    { id: "axe",      name: "تبر",        need: { wood: 5 },              give: { axe: 1 },      info: "دمیج 25 — برد 70" },
+    { id: "pick",     name: "کلنگ",       need: { wood: 3, stone: 5 },    give: { pick: 1 },     info: "دمیج 20 — برد 65" },
+    { id: "knife",    name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 },    info: "دمیج 35 — برد 60" },
+    { id: "wrench",   name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },   info: "دمیج 15 — برد 55 — همچنین برای تعمیر بدنه ماشین" },
+    { id: "bandage",  name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 },  info: "هر باند +۲۵ سلامتی" },
+    { id: "fuel_can", name: "قوطی بنزین", need: { corn: 4 },              give: { fuel_can: 1 }, info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
   ],
   build: [
     { id: "wall",   name: "دیوار چوبی", need: { wood: 6 },            give: { wall: 1 } },
@@ -44,13 +44,13 @@ const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
 const CAR_COLORS = ["engine_blue", "engine_yellow", "engine_green", "engine_black", "engine_orange"];
 
 const RESOURCE_NODES = {
-  tree: { gives: "wood",  amount: [1, 3], images: ["tree1", "tree2", "tree_user", "wood_small"], drawH: 36, color: "#2e6b1f", radius: 10 },
-  rock: { gives: "stone", amount: [1, 2], images: ["rock1", "rock2", "rock3"], drawH: 24, color: "#8a8a8a", radius: 9 },
-  scrap:{ gives: "metal", amount: [1, 2], images: ["crate1_user", "crate2_user"], drawH: 26, color: "#b5652b", radius: 8 },
-  bush: { gives: "cloth", amount: [1, 1], color: "#7a9e4a", radius: 7 },
-  berry:{ gives: "food",  amount: [1, 2], color: "#c73f5c", radius: 6 },
-  well: { gives: "water", amount: [1, 2], color: "#3f7fc7", radius: 7 },
-  corn: { gives: "corn",  amount: [1, 2], color: "#e8c93a", radius: 7 },
+  tree:  { gives: "wood",  amount: [1, 3], images: ["tree1", "tree2", "tree_user", "wood_small"], drawH: 36, color: "#2e6b1f", radius: 10 },
+  rock:  { gives: "stone", amount: [1, 2], images: ["rock1", "rock2", "rock3"], drawH: 24, color: "#8a8a8a", radius: 9 },
+  scrap: { gives: "metal", amount: [1, 2], images: ["crate1_user", "crate2_user"], drawH: 26, color: "#b5652b", radius: 8 },
+  bush:  { gives: "cloth", amount: [1, 1], color: "#7a9e4a", radius: 7 },
+  berry: { gives: "food",  amount: [1, 2], color: "#c73f5c", radius: 6 },
+  well:  { gives: "water", amount: [1, 2], color: "#3f7fc7", radius: 7 },
+  corn:  { gives: "corn",  amount: [1, 2], color: "#e8c93a", radius: 7 },
 };
 
 const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5" };
@@ -69,7 +69,6 @@ const WEAPON_DAMAGE = { fists: 12, knife: 35, axe: 25, pick: 20, wrench: 15 };
 const WEAPON_COLOR = { fists: null, knife: "#d8d8d8", axe: "#8a5a2b", pick: "#777", wrench: "#5b7fbf" };
 const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
-
 const INTERACT_RANGE = 55;
 const ZOMBIE_SPEED = 1.1;
 const ZOMBIE_SIGHT_RANGE = 230;
@@ -78,22 +77,21 @@ const PLAYER_SPEED = 2.6;
 const ZOMBIE_DAMAGE = 6;
 const ZOMBIE_MAX = 8;
 const ZOMBIE_SPAWN_EVERY = 7000;
-
 const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
 
 const HELP_TEXT_HTML = `
-  <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
-  <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
-  <div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
-  <div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
-  <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
-  <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
-  <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
-  <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
-  <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
-  <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
+<div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
+<div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
+<div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
+<div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
+<div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
+<div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
+<div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
+<div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
+<div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
+<div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
 
 const IMG_SRC = {
@@ -177,24 +175,19 @@ function drawHitFlash(x, y, radius) {
   ctx.restore();
 }
 
-// دست و پای ساده‌ی رویه‌ای (چون اسپرایت‌ها لایه‌ی جدا برای عضو ندارن) + سلاح تو دست
-// قرارداد محور: جهت جلو = +X (هم‌راستا با مخروط حمله)، پهلو = +Y
 function drawLimbsAndWeapon(x, y, facing, walkPhase, weaponKey, attackPulse) {
   const stride = Math.sin(walkPhase) * 5;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(facing);
-  // پاها: کمی عقب‌تر از مرکز، کنار هم (چپ/راست)، با قدم‌زدن جلو-عقب متناوب
   ctx.fillStyle = "#3b2a17";
   ctx.fillRect(-11 + stride * 0.5, -6, 7, 5);
   ctx.fillRect(-11 - stride * 0.5, 1, 7, 5);
-  // دست‌ها: یکی عقب، یکی جلو (نوسان راه‌رفتن)
   ctx.fillStyle = "#e8c07a";
   const armSwing = Math.sin(walkPhase + Math.PI) * 4;
   ctx.beginPath(); ctx.arc(-9, armSwing, 4, 0, Math.PI * 2); ctx.fill();
   const handForwardX = attackPulse ? 20 : 9;
   ctx.beginPath(); ctx.arc(handForwardX, -armSwing, 4, 0, Math.PI * 2); ctx.fill();
-  // سلاح تو دست جلویی
   if (weaponKey === "knife" && imgReady(IMG.knife_user)) {
     ctx.save();
     ctx.translate(handForwardX + 6, -armSwing);
@@ -223,7 +216,6 @@ function drawZombieLimbs(x, y, facing, walkPhase) {
   ctx.fillStyle = "#2f5d33";
   ctx.fillRect(-10 + stride * 0.5, -6, 7, 5);
   ctx.fillRect(-10 - stride * 0.5, 1, 7, 5);
-  // دست‌های دراز به جلو (حالت کلاسیک زامبی)
   ctx.fillStyle = "#4a7a4e";
   ctx.beginPath(); ctx.arc(11, -6, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(11, 6, 3.5, 0, Math.PI * 2); ctx.fill();
@@ -242,6 +234,7 @@ try {
     screen.orientation.lock("landscape").catch(() => {});
   }
 } catch (e) {}
+
 const initData = tg ? tg.initData : "";
 
 // ==================== وضعیت بازی ====================
@@ -255,8 +248,7 @@ let currentCarKey = null;
 let drivingCarKey = null;
 let isDead = false;
 let isPanelOpen = false;
-let isHidden = false; // وقتی صفحه/تب دیده نمی‌شه (پس‌زمینه یا بسته)، بازی کاملاً متوقف می‌شه
-
+let isHidden = false;
 let playerFacing = Math.PI / 2;
 let lastAttackTime = 0;
 let playerHitFlashUntil = 0;
@@ -266,14 +258,12 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const loadingEl = document.getElementById("loading");
 const rotateWrap = document.getElementById("rotate-wrap");
+
 function resize() { canvas.width = rotateWrap.clientWidth; canvas.height = rotateWrap.clientHeight; }
 addEventListener("resize", resize);
 addEventListener("orientationchange", resize);
 resize();
 
-// وقتی گوشی عمودیه، کل بازی با CSS ۹۰ درجه می‌چرخه تا افقی دیده بشه؛
-// ولی رویدادهای لمسی هنوز تو مختصات واقعیِ (عمودیِ) صفحه میان، پس باید تبدیلشون کنیم
-// به مختصات محلیِ داخل rotate-wrap (که همیشه افقیه).
 function isForcedPortrait() { return window.innerWidth < window.innerHeight; }
 
 function physicalDeltaToLocal(dpx, dpy) {
@@ -317,6 +307,7 @@ function isSolidForPlayer(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_PLAYER[b]);
 }
+
 function isSolidForZombie(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_ZOMBIE[b]);
@@ -370,8 +361,6 @@ function getAllNearbyCars() {
   }
   for (const c of base) map.set(c.key, c);
 
-  // ماشینی که قبلاً روندیمش و جای دیگه پارک شده، حتی اگه از سکتورهای اطراف فعلی دور باشه،
-  // همیشه باید پیدا بشه (وگرنه بعد از تموم شدن بنزین دور از خونه‌ی اصلیش، غیب می‌شد)
   for (const key of Object.keys(state.cars)) {
     const saved = state.cars[key];
     if (!saved || saved.posX === undefined) continue;
@@ -380,7 +369,13 @@ function getAllNearbyCars() {
       entry = carInfoFromKey(key);
       if (!entry) continue;
     }
-    map.set(key, { key, x: saved.posX, y: saved.posY, color: entry.color });
+    // 🔥 اصلاح: اگر این ماشین همونیه که الان سوارشیم، مختصاتش = مختصات بازیکن
+    let cx = saved.posX, cy = saved.posY;
+    if (inCar && drivingCarKey === key) {
+      cx = state.player.x;
+      cy = state.player.y;
+    }
+    map.set(key, { key, x: cx, y: cy, color: entry.color });
   }
   return Array.from(map.values());
 }
@@ -459,7 +454,6 @@ async function onDeath() {
   drivingCarKey = null;
   loadingEl.textContent = "💀 مُردی... دنیای جدیدی در حال ساخته شدنه";
   loadingEl.style.display = "flex";
-
   if (initData) {
     try {
       const res = await fetch("/api/reset", {
@@ -475,7 +469,6 @@ async function onDeath() {
   } else {
     state = freshLocalState();
   }
-
   setTimeout(() => {
     loadingEl.style.display = "none";
     isDead = false;
@@ -498,21 +491,25 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
     stick.style.top = 31 + dy + "px";
     onMove(dx / MAX, dy / MAX);
   }
+
   function reset() {
     active = false; touchId = null;
     stick.style.left = "31px"; stick.style.top = "31px";
     onRelease();
   }
+
   zone.addEventListener("touchstart", (e) => {
     const t = e.changedTouches[0];
     active = true; touchId = t.identifier; startX = t.clientX; startY = t.clientY;
     e.preventDefault();
   }, { passive: false });
+
   zone.addEventListener("touchmove", (e) => {
     if (!active) return;
     for (const t of e.changedTouches) if (t.identifier === touchId) move(t.clientX, t.clientY);
     e.preventDefault();
   }, { passive: false });
+
   zone.addEventListener("touchend", reset);
   zone.addEventListener("touchcancel", reset);
 
@@ -538,6 +535,7 @@ canvas.addEventListener("click", (e) => {
   const p = physicalPointToLocal(e.clientX, e.clientY);
   onTapScreen(p.x, p.y);
 });
+
 canvas.addEventListener("touchstart", (e) => {
   if (e.target !== canvas) return;
   const t = e.touches[0];
@@ -619,7 +617,7 @@ function openPanel(kind, carKey) {
       const row = document.createElement("div");
       row.className = "item-row";
       const equippable = ["axe", "pick", "knife", "wrench"].includes(k);
-      const rangeTxt = equippable ? ` (برد ${WEAPON_RANGE[k]})` : "";
+      const rangeTxt = equippable ? `(برد ${WEAPON_RANGE[k]})` : "";
       row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
         const b = document.createElement("button");
@@ -737,12 +735,11 @@ function renderCarPanel(title, content, carKey) {
     fuelRow.appendChild(b);
   }
   content.appendChild(fuelRow);
-  if ((state.inventory.corn || 0) > 0 || true) {
-    const hintRow = document.createElement("div");
-    hintRow.className = "item-row";
-    hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
-    content.appendChild(hintRow);
-  }
+
+  const hintRow = document.createElement("div");
+  hintRow.className = "item-row";
+  hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
+  content.appendChild(hintRow);
 
   const rideRow = document.createElement("div");
   rideRow.className = "item-row";
@@ -760,7 +757,6 @@ function renderCarPanel(title, content, carKey) {
   content.appendChild(rideRow);
 }
 
-// وقتی پیاده می‌شی (دستی، بی‌بنزینی، یا خراب شدن ماشین) دقیقاً همینجا پارک می‌مونه
 function exitCar() {
   if (drivingCarKey) {
     const cs = getCarState(drivingCarKey);
@@ -839,7 +835,7 @@ function nearestResource() {
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
 
-  // 🔥 رفع باگ: اگر سوار ماشین هستیم، مستقیم پنل همون ماشین رو باز کن
+  // 🔥 اصلاح باگ پیاده شدن: اگر سوار ماشین هستیم، مستقیم پنل همون ماشین رو باز کن
   if (inCar && drivingCarKey) {
     openPanel("car", drivingCarKey);
     return;
@@ -847,18 +843,6 @@ function doInteract() {
 
   const car = nearestCar();
   if (car) { openPanel("car", car.key); return; }
-
-  const res = nearestResource();
-  if (res) {
-    const def = RESOURCE_NODES[res.res];
-    const amt = def.amount[0] + Math.floor(Math.random() * (def.amount[1] - def.amount[0] + 1));
-    state.inventory[def.gives] = (state.inventory[def.gives] || 0) + amt;
-    state.modifications[modKey(res.tx, res.ty)] = { harvested: true };
-    toast(`+${amt} ${ITEM_FA[def.gives]}`);
-    return;
-  }
-  toast("چیزی برای تعامل نزدیک نیست");
-}
 
   const res = nearestResource();
   if (res) {
@@ -930,7 +914,6 @@ function updateZombies(dt) {
   for (const z of zombies) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
-
     if (!z.alerted) {
       if (d <= ZOMBIE_SIGHT_RANGE) {
         z.alerted = true;
@@ -939,7 +922,6 @@ function updateZombies(dt) {
     } else if (d > ZOMBIE_LOSE_INTEREST) {
       z.alerted = false;
     }
-
     if (z.alerted) {
       z.facing = Math.atan2(dy, dx);
       z.walkPhase += dt * 0.25;
@@ -968,8 +950,8 @@ function updatePlayer(dt) {
   const p = state.player;
   const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
   const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
-
   const speed = (inCar ? PLAYER_SPEED * 3.4 : PLAYER_SPEED) * (state.player.stamina > 0 ? 1 : 0.55);
+
   if (moving) {
     const dx = joyVec.x * speed * dt, dy = joyVec.y * speed * dt;
     playerWalkPhase += dt * 0.28;
@@ -1004,7 +986,6 @@ function updatePlayer(dt) {
   p.thirst = Math.max(0, p.thirst - dt * 0.015);
   if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
   p.health = Math.min(100, p.health);
-
   if (p.health <= 0 && !isDead) onDeath();
 }
 
@@ -1019,7 +1000,6 @@ function worldToScreen(wx, wy) {
 function drawWorld() {
   ctx.fillStyle = "#4a8a3f";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   const cam = getCamera();
   const tilesX = Math.ceil(canvas.width / TILE) + 2;
   const tilesY = Math.ceil(canvas.height / TILE) + 2;
@@ -1032,14 +1012,12 @@ function drawWorld() {
       const s = worldToScreen(wx, wy);
       if (s.x < -TILE || s.x > canvas.width + TILE || s.y < -TILE || s.y > canvas.height + TILE) continue;
 
-      // زمین یکدست سبز با کمی تنوع رنگ ملایم (بدون نقشه‌ی خاکی به‌هم‌ریخته)
       const g = hash2(tx, ty, state.worldSeed + 999);
       ctx.fillStyle = g < 0.15 ? "#4f9345" : (g > 0.9 ? "#457c3c" : "#4a8a3f");
       ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
 
       const key = modKey(tx, ty);
       const mod = state.modifications[key];
-
       if (mod && mod.build) {
         if (mod.build === "wall") {
           if (imgReady(IMG.wall_user)) {
@@ -1060,7 +1038,6 @@ function drawWorld() {
         }
         continue;
       }
-
       if (mod && mod.harvested) continue;
 
       const res = tileResource(tx, ty, state.worldSeed);
@@ -1087,7 +1064,7 @@ function drawWorld() {
 function drawCars() {
   const cars = getAllNearbyCars();
   for (const c of cars) {
-    if (inCar && c.key === drivingCarKey) continue; // این ماشین الان زیر پلیره، جدا رسمش نمی‌کنیم
+    if (inCar && c.key === drivingCarKey) continue;
     const s = worldToScreen(c.x, c.y);
     if (s.x < -60 || s.x > canvas.width + 60 || s.y < -60 || s.y > canvas.height + 60) continue;
     const cs = getCarState(c.key);
@@ -1112,7 +1089,6 @@ function drawZombies() {
   for (const z of zombies) {
     const s = worldToScreen(z.x, z.y);
     const by = s.y;
-
     const sheet = ZOMBIE_SHEETS[z.type] || ZOMBIE_SHEETS.zombie1;
     const frameIdx = z.alerted ? Math.floor(z.walkPhase * 2) % sheet.frames : 0;
     const drawn = drawSpriteFrameRotated(IMG[z.type || "zombie1"], sheet, frameIdx, s.x, by, 34, (z.facing || 0) + Math.PI / 2);
@@ -1167,8 +1143,8 @@ function drawWaypoint() {
 function drawPlayer() {
   const s = { x: canvas.width / 2, y: canvas.height / 2 };
   const now = performance.now();
-
   const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
+
   if (aiming) {
     const range = WEAPON_RANGE[currentWeaponKey()];
     ctx.save();
@@ -1185,7 +1161,6 @@ function drawPlayer() {
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
-
     const label = document.getElementById("range-label");
     label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
     label.classList.add("show");
@@ -1201,13 +1176,11 @@ function drawPlayer() {
     const drivingCar = getCarState(drivingCarKey || "main");
     const carColor = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main"));
     const carImg = IMG[(carColor && carColor.color) || "engine_orange"];
-    // اسپرایت موتور پیش‌فرض رو به بالاست، پس ۹۰ درجه اضافه می‌کنیم تا با جهت واقعی حرکت یکی بشه
     const drawn = drawImageRotated(carImg, s.x, by, 46, playerFacing + Math.PI / 2);
     if (!drawn) {
       ctx.fillStyle = "#d9a441";
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
     }
-    // پلیر رو سوار بر موتور نشون بده (بدون پا و اسلحه، چون نشسته)
     drawImageRotated(IMG.player, s.x, by, 22, playerFacing);
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
     ctx.fillText(`⛽${Math.round(drivingCar.fuel)}%`, s.x, by - 34);
@@ -1215,7 +1188,6 @@ function drawPlayer() {
   }
 
   drawLimbsAndWeapon(s.x, by, playerFacing, playerWalkPhase, currentWeaponKey(), now < attackPulseUntil);
-
   const drawn = drawImageRotated(IMG.player, s.x, by, 32, playerFacing);
   if (!drawn) {
     ctx.fillStyle = "#e8c07a";
@@ -1244,7 +1216,6 @@ function loop() {
     drawWaypoint();
     drawPlayer();
     updateHUD();
-
     if (!isDead && !isPanelOpen) {
       saveTimer += dt;
       if (saveTimer > 300) { saveTimer = 0; saveState(); }
@@ -1267,13 +1238,11 @@ function updateHUD() {
     await loadState();
     document.getElementById("loading").style.display = "none";
     lastZombieSpawn = performance.now();
-
     if (!state.guideSeen) {
       openPanel("help");
       state.guideSeen = true;
       saveState();
     }
-
     loop();
   } catch (e) {
     const el = document.getElementById("loading");
@@ -1291,6 +1260,6 @@ document.addEventListener("visibilitychange", () => {
     saveState();
   } else {
     isHidden = false;
-    lastTime = performance.now(); // جلوگیری از یه dt غول‌پیکر که باعث پرش ناگهانی بشه
+    lastTime = performance.now();
   }
 });
