@@ -7,10 +7,8 @@ const DOG_ATTACK_INTERVAL = 800;
 const DOG_MAX_HP = 100;
 const DOG_FOLLOW_DISTANCE = 60;
 
-// وضعیت سگ
 let dog = null;
 
-// اضافه کردن به متن راهنما
 const DOG_HELP_TEXT = `
 <div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت (🌽) درمانش کن</div>
 `;
@@ -46,14 +44,39 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   ctx.ellipse(size * 0.5, size * 0.35, size * 0.2, size * 0.3, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // پاها (با انیمیشن راه‌رفتن)
+  // خط‌های کمر (فقط در حالت زخمی)
+  if (isDowned) {
+    ctx.strokeStyle = "#4a3520";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.3, -size * 0.1);
+    ctx.lineTo(-size * 0.3, size * 0.1);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.1);
+    ctx.lineTo(0, size * 0.1);
+    ctx.stroke();
+  }
+
+  // چهار تا پا با انیمیشن
   if (!isDowned) {
     const legOffset = Math.sin(walkPhase) * 3;
     ctx.fillStyle = darkColor;
+    // پای چپ جلو
     ctx.fillRect(size * 0.3, -size * 0.5 + legOffset, size * 0.25, size * 0.3);
+    // پای راست جلو
     ctx.fillRect(size * 0.3, size * 0.2 - legOffset, size * 0.25, size * 0.3);
+    // پای چپ عقب
     ctx.fillRect(-size * 0.5, -size * 0.5 - legOffset, size * 0.25, size * 0.3);
+    // پای راست عقب
     ctx.fillRect(-size * 0.5, size * 0.2 + legOffset, size * 0.25, size * 0.3);
+  } else {
+    // در حالت زخمی، پاها جمع می‌شن
+    ctx.fillStyle = darkColor;
+    ctx.fillRect(size * 0.2, -size * 0.4, size * 0.2, size * 0.25);
+    ctx.fillRect(size * 0.2, size * 0.15, size * 0.2, size * 0.25);
+    ctx.fillRect(-size * 0.4, -size * 0.4, size * 0.2, size * 0.25);
+    ctx.fillRect(-size * 0.4, size * 0.15, size * 0.2, size * 0.25);
   }
 
   // دم
@@ -102,7 +125,6 @@ function updateDog(dt) {
   const dy = state.player.y - dog.y;
   const distToPlayer = Math.hypot(dx, dy);
 
-  // پیدا کردن نزدیک‌ترین زامبی
   let nearestZombie = null;
   let nearestZombieDist = DOG_SIGHT_RANGE;
   for (const z of zombies) {
@@ -116,17 +138,14 @@ function updateDog(dt) {
   }
 
   if (nearestZombie && nearestZombieDist < DOG_SIGHT_RANGE) {
-    // حمله به زامبی
     dog.facing = Math.atan2(nearestZombie.y - dog.y, nearestZombie.x - dog.x);
     dog.walkPhase += dt * 0.3;
 
     if (nearestZombieDist > DOG_ATTACK_RANGE) {
-      // حرکت به سمت زامبی
       const moveDx = (nearestZombie.x - dog.x) / nearestZombieDist * DOG_SPEED * dt;
       const moveDy = (nearestZombie.y - dog.y) / nearestZombieDist * DOG_SPEED * dt;
       moveWithCollision(dog, moveDx, moveDy, () => false);
     } else {
-      // حمله
       if (now - dog.lastAttackTime > DOG_ATTACK_INTERVAL) {
         dog.lastAttackTime = now;
         nearestZombie.hp -= DOG_ATTACK_DAMAGE;
@@ -138,7 +157,6 @@ function updateDog(dt) {
       }
     }
   } else {
-    // دنبال بازیکن
     if (distToPlayer > DOG_FOLLOW_DISTANCE) {
       dog.facing = Math.atan2(dy, dx);
       dog.walkPhase += dt * 0.25;
@@ -148,7 +166,6 @@ function updateDog(dt) {
     }
   }
 
-  // بررسی برخورد زامبی با سگ
   for (const z of zombies) {
     const zdx = z.x - dog.x;
     const zdy = z.y - dog.y;
@@ -168,22 +185,18 @@ function updateDog(dt) {
 function drawDog() {
   if (!dog) return;
   const s = worldToScreen(dog.x, dog.y);
-  
-  // رسم سگ
   drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned);
-  
-  // نوار سلامت
+
   const barWidth = 30;
   const barHeight = 4;
   const hpPercent = dog.hp / DOG_MAX_HP;
-  
+
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fillRect(s.x - barWidth / 2, s.y - 25, barWidth, barHeight);
-  
+
   ctx.fillStyle = hpPercent > 0.5 ? "#4CAF50" : (hpPercent > 0.25 ? "#FFC107" : "#F44336");
   ctx.fillRect(s.x - barWidth / 2, s.y - 25, barWidth * hpPercent, barHeight);
-  
-  // آیکون سگ
+
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
@@ -194,18 +207,18 @@ function drawDog() {
 function healDog(foodType) {
   if (!dog || !dog.isDowned) return;
   if ((state.inventory[foodType] || 0) <= 0) return;
-  
+
   state.inventory[foodType] -= 1;
   dog.hp = DOG_MAX_HP;
   dog.isDowned = false;
   dog.x = state.player.x + 30;
   dog.y = state.player.y;
-  
+
   panelFeedback("سگ درمان شد! 🐕❤️");
   toast("سگت دوباره زنده شد! 🐕");
 }
 
-// ==================== ایجاد سگ در شروع بازی ====================
+// ==================== ایجاد سگ ====================
 function initDog() {
   if (!dog) {
     dog = {
@@ -216,14 +229,6 @@ function initDog() {
       walkPhase: 0,
       isDowned: false,
       lastAttackTime: 0,
-      targetZombie: null,
     };
   }
 }
-
-// اضافه کردن به normalizeState
-const originalNormalizeState = normalizeState;
-normalizeState = function() {
-  originalNormalizeState();
-  initDog();
-};
