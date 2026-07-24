@@ -255,8 +255,8 @@ def run_bot():
     application.add_handler(CommandHandler("start", cmd_start))
     application.add_handler(CommandHandler("help", cmd_help))
     application.add_handler(
-        MessageHandler(filters.Regex(r"راهنما") & filters.TEXT & ~filters.COMMAND, on_keyword_help)
-    )
+    MessageHandler(filters.Regex(r"^راهنمای بقا$") & filters.TEXT & ~filters.COMMAND, on_keyword_help)
+)
     application.add_handler(
         MessageHandler(filters.Regex(r"بقا") & filters.TEXT & ~filters.COMMAND, on_keyword_bagha)
     )
