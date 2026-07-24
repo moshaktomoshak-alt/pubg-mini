@@ -5,7 +5,6 @@ html, body {
 }
 #game { position: absolute; top: 0; left: 0; display: block; background: #4a7d3f; }
 
-/* پیش‌فرض: گوشی افقیه، rotate-wrap کل صفحه رو پر می‌کنه، چرخشی لازم نیست */
 #rotate-wrap {
   position: fixed;
   top: 0; left: 0;
@@ -13,8 +12,6 @@ html, body {
   overflow: hidden;
 }
 
-/* وقتی گوشی عمودیه: کل بازی رو ۹۰ درجه می‌چرخونیم تا همیشه افقی دیده بشه،
-   بدون نیاز به چرخوندن فیزیکی گوشی یا قفل چرخش سیستم */
 @media (orientation: portrait) {
   #rotate-wrap {
     position: fixed;
@@ -46,8 +43,58 @@ html, body {
 .bar-fill.thirst { background: #4aa3d9; }
 .bar-fill.stamina { background: #58c46b; }
 
+/* HUD جدید: روز/شب و آب‌وهوا */
+#hud-environment {
+  position: absolute;
+  top: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 20;
+  pointer-events: none;
+}
+#time-display, #weather-display {
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* دکمه‌های toggle سگ */
+#dog-toggles {
+  position: absolute;
+  top: 42px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 20;
+}
+#dog-toggles button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.3);
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+#dog-toggles button.active {
+  background: #4CAF50;
+  border-color: #4CAF50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, .6);
+}
+#dog-toggles button:not(.active) {
+  opacity: .5;
+}
+
 #toast {
-  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+  position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
   background: rgba(0,0,0,.65); color: #fff; padding: 5px 12px; border-radius: 8px;
   font-size: 12px; z-index: 25; opacity: 0; transition: opacity .3s; pointer-events: none;
   white-space: nowrap;
@@ -62,7 +109,6 @@ html, body {
 }
 #range-label.show { opacity: 1; }
 
-/* جوی‌استیک حرکت - چپ */
 #joystick-zone {
   position: absolute; left: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
 }
@@ -77,7 +123,6 @@ html, body {
   position: absolute; left: 31px; top: 31px;
 }
 
-/* جوی‌استیک هدف‌گیری - راست */
 #aim-zone {
   position: absolute; right: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
 }
@@ -133,11 +178,9 @@ html, body {
 }
 .item-row button:disabled { background: #555; opacity: .6; }
 
-
 #hud-left-buttons {
   display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; pointer-events: auto;
 }
-
 #btn-help, #btn-gps {
   width: 26px; height: 26px; border-radius: 50%; border: none;
   background: rgba(0,0,0,.5); color: #fff; font-size: 13px;
