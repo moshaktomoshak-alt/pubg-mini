@@ -1,4 +1,4 @@
-// ==================== نمایش خطای واقعی به‌جای «در حال بارگذاری» بی‌پایان ====================
+// ==================== نمایش خطای واقعی ====================
 window.addEventListener("error", function (e) {
   const el = document.getElementById("loading");
   if (el) {
@@ -9,7 +9,6 @@ window.addEventListener("error", function (e) {
   }
 });
 
-// ==================== محافظ نهایی: اگه هرچی شد بعد از ۸ ثانیه گیر نکنه ====================
 setTimeout(function () {
   const el = document.getElementById("loading");
   if (el && el.style.display !== "none") {
@@ -85,13 +84,14 @@ const HELP_TEXT_HTML = `
 <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
 <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
 <div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
-<div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
+<div class="help-item"> <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
 <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
 <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
-<div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
-<div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
+<div class="help-item"> <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
+<div class="help-item"> <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
 <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
-<div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
+${DOG_HELP_TEXT}
+<div class="help-item"> اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
 
 const IMG_SRC = {
@@ -147,7 +147,6 @@ function drawImageRotated(im, x, y, targetH, angle) {
   return true;
 }
 
-// اسپرایت‌شیت زامبی: ۸ فریم واقعی از چرخه‌ی راه‌رفتن، کنار هم به‌صورت افقی
 const ZOMBIE_SHEETS = {
   zombie1: { frames: 8, w: 66, h: 72 },
   zombie2: { frames: 8, w: 51, h: 72 },
@@ -369,7 +368,6 @@ function getAllNearbyCars() {
       entry = carInfoFromKey(key);
       if (!entry) continue;
     }
-    // 🔥 اصلاح: اگر این ماشین همونیه که الان سوارشیم، مختصاتش = مختصات بازیکن
     let cx = saved.posX, cy = saved.posY;
     if (inCar && drivingCarKey === key) {
       cx = state.player.x;
@@ -423,6 +421,7 @@ function normalizeState() {
   }
   if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
   if (state.waypoint === undefined) state.waypoint = null;
+  initDog();
 }
 
 function freshLocalState() {
@@ -555,7 +554,7 @@ function onTapScreen(sx, sy) {
     state.waypoint = { x: w.x, y: w.y };
     waypointArmed = false;
     document.getElementById("btn-gps").classList.remove("active");
-    toast("نشون گذاشته شد 📍");
+    toast("نشون گذاشته شد ");
     return;
   }
   if (placeMode) { tryPlace(w.x, w.y); return; }
@@ -623,7 +622,7 @@ function openPanel(kind, carKey) {
         const b = document.createElement("button");
         b.textContent = state.equipped === k ? "مجهز شده" : "استفاده";
         b.disabled = state.equipped === k;
-        b.onclick = () => { state.equipped = k; panelFeedback(ITEM_FA[k] + " رو دستت گرفتی 🖐️"); openPanel("inventory"); };
+        b.onclick = () => { state.equipped = k; panelFeedback(ITEM_FA[k] + " رو دستت گرفتی ️"); openPanel("inventory"); };
         row.appendChild(b);
       } else if (k === "wall" || k === "floor" || k === "door" || k === "window") {
         const b = document.createElement("button");
@@ -640,6 +639,13 @@ function openPanel(kind, carKey) {
         b.textContent = "مصرف";
         b.onclick = () => { consumeItem(k); openPanel("inventory"); };
         row.appendChild(b);
+      } else if (k === "food" || k === "corn") {
+        if (dog && dog.isDowned) {
+          const b = document.createElement("button");
+          b.textContent = "درمان سگ 🐕";
+          b.onclick = () => { healDog(k); openPanel("inventory"); };
+          row.appendChild(b);
+        }
       }
       content.appendChild(row);
     }
@@ -654,7 +660,7 @@ function openPanel(kind, carKey) {
         const ok = have >= v;
         return `${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
       }).join("، ");
-      const infoText = r.info ? `<div class="cost">ℹ️ ${r.info}</div>` : "";
+      const infoText = r.info ? `<div class="cost">️ ${r.info}</div>` : "";
       row.innerHTML = `<span class="name">${r.name}<div class="cost">نیاز: ${costText}</div>${infoText}</span>`;
       const can = Object.entries(r.need).every(([k, v]) => (state.inventory[k] || 0) >= v);
       const b = document.createElement("button");
@@ -666,8 +672,7 @@ function openPanel(kind, carKey) {
     }
   }
 }
-
-// ==================== پنل اختصاصی ماشین ====================
+// ==================== پنل ماشین ====================
 function renderCarPanel(title, content, carKey) {
   currentCarKey = carKey || "main";
   const car = getCarState(currentCarKey);
@@ -738,7 +743,7 @@ function renderCarPanel(title, content, carKey) {
 
   const hintRow = document.createElement("div");
   hintRow.className = "item-row";
-  hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
+  hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با  ذرت یه قوطی بساز </span>`;
   content.appendChild(hintRow);
 
   const rideRow = document.createElement("div");
@@ -835,7 +840,6 @@ function nearestResource() {
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
 
-  // 🔥 اصلاح باگ پیاده شدن: اگر سوار ماشین هستیم، مستقیم پنل همون ماشین رو باز کن
   if (inCar && drivingCarKey) {
     openPanel("car", drivingCarKey);
     return;
@@ -856,7 +860,7 @@ function doInteract() {
   toast("چیزی برای تعامل نزدیک نیست");
 }
 
-// ==================== حمله‌ی مبتنی بر جهت ====================
+// ==================== حمله ====================
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
@@ -944,7 +948,7 @@ function updateZombies(dt) {
   }
 }
 
-// ==================== حرکت و جهت بازیکن ====================
+// ==================== حرکت بازیکن ====================
 let playerWalkPhase = 0;
 function updatePlayer(dt) {
   const p = state.player;
@@ -1079,7 +1083,7 @@ function drawCars() {
       ctx.fillRect(s.x - 20, s.y - 13, 40, 26);
     }
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-    let label = !cs.repaired ? "🔧 موتور خرابه" : `⛽${Math.round(cs.fuel)}% 🔧${Math.round(cs.health)}%`;
+    let label = !cs.repaired ? "🔧 موتور خرابه" : `${Math.round(cs.fuel)}% 🔧${Math.round(cs.health)}%`;
     ctx.fillText(label, s.x, s.y - 32);
   }
 }
@@ -1207,12 +1211,14 @@ function loop() {
   if (state && !isDead && !isPanelOpen && !isHidden) {
     updatePlayer(dt);
     updateZombies(dt);
+    updateDog(dt);
   }
 
   if (state) {
     drawWorld();
     drawCars();
     drawZombies();
+    drawDog();
     drawWaypoint();
     drawPlayer();
     updateHUD();
