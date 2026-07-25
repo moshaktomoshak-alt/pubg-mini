@@ -6,15 +6,12 @@ const DOG_ATTACK_DAMAGE = 18;
 const DOG_ATTACK_INTERVAL = 800;
 const DOG_MAX_HP = 100;
 const DOG_FOLLOW_DISTANCE = 60;
+const DOG_COLLECT_RANGE = 80;
 
 let dog = null;
 
-const DOG_HELP_TEXT = `
-<div class="help-item">🐕 <b>سگ:</b> از اول بازی همراهته! زامبی‌ها رو می‌بینه و بهشون حمله می‌کنه. اگه زخمی بشه با غذا (🍗) یا ذرت () درمانش کن</div>
-`;
-
 // ==================== رسم سگ از نمای بالا ====================
-function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
+function drawDogTopDown(x, y, facing, walkPhase, isDowned, mode) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(facing);
@@ -23,42 +20,31 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   const darkColor = isDowned ? "#6B5340" : "#8B6F47";
   const size = 14;
 
-  // ✅ اول: پاها (زیر بدن) - حالا پاهای جلو جلوتر قرار گرفتن
   if (!isDowned) {
     const legOffset = Math.sin(walkPhase) * 3;
     ctx.fillStyle = darkColor;
-    // پای چپ جلو (جلوتر، نزدیک سر)
     ctx.fillRect(size * 0.6, -size * 0.55 + legOffset, size * 0.3, size * 0.35);
-    // پای راست جلو
     ctx.fillRect(size * 0.6, size * 0.2 - legOffset, size * 0.3, size * 0.35);
-    // پای چپ عقب
     ctx.fillRect(-size * 0.6, -size * 0.55 - legOffset, size * 0.3, size * 0.35);
-    // پای راست عقب
     ctx.fillRect(-size * 0.6, size * 0.2 + legOffset, size * 0.3, size * 0.35);
   } else {
-    // در حالت زخمی، پاها جمع می‌شن
     ctx.fillStyle = darkColor;
-    // پاهای جلو جمع‌شده
     ctx.fillRect(size * 0.4, -size * 0.45, size * 0.25, size * 0.25);
     ctx.fillRect(size * 0.4, size * 0.2, size * 0.25, size * 0.25);
-    // پاهای عقب جمع‌شده
     ctx.fillRect(-size * 0.5, -size * 0.45, size * 0.25, size * 0.25);
     ctx.fillRect(-size * 0.5, size * 0.2, size * 0.25, size * 0.25);
   }
 
-  // ✅ دوم: بدن (روی پاها)
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, size, size * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // سر (دایره جلوتر)
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.arc(size * 0.7, 0, size * 0.45, 0, Math.PI * 2);
   ctx.fill();
 
-  // گوش‌ها
   ctx.fillStyle = darkColor;
   ctx.beginPath();
   ctx.ellipse(size * 0.5, -size * 0.35, size * 0.2, size * 0.3, -0.3, 0, Math.PI * 2);
@@ -67,7 +53,6 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   ctx.ellipse(size * 0.5, size * 0.35, size * 0.2, size * 0.3, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // خط‌های کمر (فقط در حالت زخمی)
   if (isDowned) {
     ctx.strokeStyle = "#4a3520";
     ctx.lineWidth = 1.5;
@@ -81,14 +66,12 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
     ctx.stroke();
   }
 
-  // دم
   ctx.fillStyle = darkColor;
   ctx.beginPath();
   const tailWag = isDowned ? 0 : Math.sin(walkPhase * 2) * 0.3;
   ctx.ellipse(-size * 0.9, 0, size * 0.3, size * 0.15, tailWag, 0, Math.PI * 2);
   ctx.fill();
 
-  // چشم‌ها
   if (!isDowned) {
     ctx.fillStyle = "#000";
     ctx.beginPath();
@@ -98,7 +81,6 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
     ctx.arc(size * 0.9, size * 0.15, size * 0.08, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // چشم‌های بسته (X)
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -115,6 +97,18 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
     ctx.stroke();
   }
 
+  if (!isDowned && mode === 'collect') {
+    ctx.fillStyle = "#ffd700";
+    ctx.font = "10px Tahoma";
+    ctx.textAlign = "center";
+    ctx.fillText("📦", size * 1.2, -size * 0.5);
+  } else if (!isDowned && mode === 'attack') {
+    ctx.fillStyle = "#ff4444";
+    ctx.font = "10px Tahoma";
+    ctx.textAlign = "center";
+    ctx.fillText("⚔️", size * 1.2, -size * 0.5);
+  }
+
   ctx.restore();
 }
 
@@ -127,44 +121,111 @@ function updateDog(dt) {
   const dy = state.player.y - dog.y;
   const distToPlayer = Math.hypot(dx, dy);
 
-  let nearestZombie = null;
-  let nearestZombieDist = DOG_SIGHT_RANGE;
-  for (const z of zombies) {
-    const zdx = z.x - dog.x;
-    const zdy = z.y - dog.y;
-    const zd = Math.hypot(zdx, zdy);
-    if (zd < nearestZombieDist) {
-      nearestZombieDist = zd;
-      nearestZombie = z;
+  if (dog.mode === 'attack') {
+    let nearestZombie = null;
+    let nearestZombieDist = DOG_SIGHT_RANGE;
+    for (const z of zombies) {
+      const zdx = z.x - dog.x;
+      const zdy = z.y - dog.y;
+      const zd = Math.hypot(zdx, zdy);
+      if (zd < nearestZombieDist) {
+        nearestZombieDist = zd;
+        nearestZombie = z;
+      }
+    }
+
+    if (nearestZombie && nearestZombieDist < DOG_SIGHT_RANGE) {
+      dog.facing = Math.atan2(nearestZombie.y - dog.y, nearestZombie.x - dog.x);
+      dog.walkPhase += dt * 0.3;
+
+      if (nearestZombieDist > DOG_ATTACK_RANGE) {
+        const moveDx = (nearestZombie.x - dog.x) / nearestZombieDist * DOG_SPEED * dt;
+        const moveDy = (nearestZombie.y - dog.y) / nearestZombieDist * DOG_SPEED * dt;
+        moveWithCollision(dog, moveDx, moveDy, () => false);
+      } else {
+        if (now - dog.lastAttackTime > DOG_ATTACK_INTERVAL) {
+          dog.lastAttackTime = now;
+          nearestZombie.hp -= DOG_ATTACK_DAMAGE;
+          nearestZombie.hitFlashUntil = now + 200;
+          if (nearestZombie.hp <= 0) {
+            zombies = zombies.filter((z) => z !== nearestZombie);
+            toast("سگت زامبی رو کشت! 🐕");
+          }
+        }
+      }
+    } else {
+      if (distToPlayer > DOG_FOLLOW_DISTANCE) {
+        dog.facing = Math.atan2(dy, dx);
+        dog.walkPhase += dt * 0.25;
+        const moveDx = dx / distToPlayer * DOG_SPEED * dt;
+        const moveDy = dy / distToPlayer * DOG_SPEED * dt;
+        moveWithCollision(dog, moveDx, moveDy, () => false);
+      }
     }
   }
 
-  if (nearestZombie && nearestZombieDist < DOG_SIGHT_RANGE) {
-    dog.facing = Math.atan2(nearestZombie.y - dog.y, nearestZombie.x - dog.x);
-    dog.walkPhase += dt * 0.3;
-
-    if (nearestZombieDist > DOG_ATTACK_RANGE) {
-      const moveDx = (nearestZombie.x - dog.x) / nearestZombieDist * DOG_SPEED * dt;
-      const moveDy = (nearestZombie.y - dog.y) / nearestZombieDist * DOG_SPEED * dt;
-      moveWithCollision(dog, moveDx, moveDy, () => false);
-    } else {
-      if (now - dog.lastAttackTime > DOG_ATTACK_INTERVAL) {
-        dog.lastAttackTime = now;
-        nearestZombie.hp -= DOG_ATTACK_DAMAGE;
-        nearestZombie.hitFlashUntil = now + 200;
-        if (nearestZombie.hp <= 0) {
-          zombies = zombies.filter((z) => z !== nearestZombie);
-          toast("سگت زامبی رو کشت! 🐕");
+  else if (dog.mode === 'collect') {
+    if (dog.collectState === 'idle') {
+      const px = dog.x, py = dog.y;
+      const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
+      let best = null, bestDist = DOG_COLLECT_RANGE * 2;
+      for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) {
+        const tx = ctx0 + dx, ty = cty0 + dy;
+        const key = modKey(tx, ty);
+        if (state.modifications[key] && state.modifications[key].harvested) continue;
+        const res = tileResource(tx, ty, state.worldSeed);
+        if (!res) continue;
+        const wx = tx * TILE, wy = ty * TILE;
+        const d = Math.hypot(wx - px, wy - py);
+        if (d < bestDist) { bestDist = d; best = { tx, ty, res, wx, wy }; }
+      }
+      if (best) {
+        dog.collectState = 'movingToResource';
+        dog.targetResource = best;
+        dog.facing = Math.atan2(best.wy - dog.y, best.wx - dog.x);
+      } else {
+        if (distToPlayer > DOG_FOLLOW_DISTANCE) {
+          dog.facing = Math.atan2(dy, dx);
+          const moveDx = dx / distToPlayer * DOG_SPEED * dt;
+          const moveDy = dy / distToPlayer * DOG_SPEED * dt;
+          moveWithCollision(dog, moveDx, moveDy, () => false);
         }
       }
     }
-  } else {
-    if (distToPlayer > DOG_FOLLOW_DISTANCE) {
-      dog.facing = Math.atan2(dy, dx);
-      dog.walkPhase += dt * 0.25;
-      const moveDx = dx / distToPlayer * DOG_SPEED * dt;
-      const moveDy = dy / distToPlayer * DOG_SPEED * dt;
-      moveWithCollision(dog, moveDx, moveDy, () => false);
+    else if (dog.collectState === 'movingToResource' && dog.targetResource) {
+      const dx = dog.targetResource.wx - dog.x;
+      const dy = dog.targetResource.wy - dog.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 20) {
+        const def = RESOURCE_NODES[dog.targetResource.res];
+        const amt = def.amount[0] + Math.floor(Math.random() * (def.amount[1] - def.amount[0] + 1));
+        state.inventory[def.gives] = (state.inventory[def.gives] || 0) + amt;
+        state.modifications[modKey(dog.targetResource.tx, dog.targetResource.ty)] = { harvested: true };
+        dog.collectState = 'returningToPlayer';
+        toast(`سگ +${amt} ${ITEM_FA[def.gives]} پیدا کرد! 🐕`);
+        dog.targetResource = null;
+      } else {
+        dog.facing = Math.atan2(dy, dx);
+        dog.walkPhase += dt * 0.3;
+        const moveDx = dx / dist * DOG_SPEED * dt;
+        const moveDy = dy / dist * DOG_SPEED * dt;
+        moveWithCollision(dog, moveDx, moveDy, () => false);
+      }
+    }
+    else if (dog.collectState === 'returningToPlayer') {
+      const dx = state.player.x - dog.x;
+      const dy = state.player.y - dog.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < DOG_FOLLOW_DISTANCE) {
+        dog.collectState = 'idle';
+        dog.facing = Math.atan2(dy, dx);
+      } else {
+        dog.facing = Math.atan2(dy, dx);
+        dog.walkPhase += dt * 0.25;
+        const moveDx = dx / dist * DOG_SPEED * dt;
+        const moveDy = dy / dist * DOG_SPEED * dt;
+        moveWithCollision(dog, moveDx, moveDy, () => false);
+      }
     }
   }
 
@@ -183,11 +244,10 @@ function updateDog(dt) {
   }
 }
 
-// ==================== رسم سگ ====================
 function drawDog() {
   if (!dog) return;
   const s = worldToScreen(dog.x, dog.y);
-  drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned);
+  drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned, dog.mode);
 
   const barWidth = 30;
   const barHeight = 4;
@@ -202,25 +262,54 @@ function drawDog() {
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
-  ctx.fillText("🐕", s.x, s.y - 28);
+  const modeIcon = dog.mode === 'attack' ? '⚔️' : '📦';
+  ctx.fillText(`🐕 ${modeIcon}`, s.x, s.y - 28);
 }
 
-// ==================== درمان سگ ====================
 function healDog(foodType) {
   if (!dog || !dog.isDowned) return;
   if ((state.inventory[foodType] || 0) <= 0) return;
 
   state.inventory[foodType] -= 1;
+  dog.hp = Math.min(DOG_MAX_HP, dog.hp + 25);
+  if (dog.hp >= DOG_MAX_HP) {
+    dog.hp = DOG_MAX_HP;
+    dog.isDowned = false;
+    dog.x = state.player.x + 30;
+    dog.y = state.player.y;
+    toast("سگت کاملاً درمان شد! 🐕❤️");
+  } else {
+    toast(`سگ +۲۵٪ جون گرفت (${Math.round(dog.hp)}%) 🐕`);
+  }
+}
+
+function reviveDog() {
+  if (!dog || !dog.isDowned) return;
+  if ((state.inventory.food || 0) <= 0) {
+    toast("برای احیا به ۱ گوشت نیاز داری! 🍗");
+    return;
+  }
+  state.inventory.food -= 1;
   dog.hp = DOG_MAX_HP;
   dog.isDowned = false;
   dog.x = state.player.x + 30;
   dog.y = state.player.y;
-
-  panelFeedback("سگ درمان شد! 🐕❤️");
-  toast("سگت دوباره زنده شد! 🐕");
+  dog.collectState = 'idle';
+  toast("سگ زنده شد! 🐕✨");
 }
 
-// ==================== ایجاد سگ ====================
+function setDogMode(mode) {
+  if (!dog || dog.isDowned) return;
+  dog.mode = mode;
+  if (mode === 'collect') {
+    dog.collectState = 'idle';
+    dog.targetResource = null;
+    toast("سگ به حالت جمع‌آوری منابع رفت 📦");
+  } else {
+    toast("سگ به حالت حمله برگشت ⚔️");
+  }
+}
+
 function initDog() {
   if (!dog) {
     dog = {
@@ -231,6 +320,9 @@ function initDog() {
       walkPhase: 0,
       isDowned: false,
       lastAttackTime: 0,
+      mode: 'attack',
+      collectState: 'idle',
+      targetResource: null,
     };
   }
 }
