@@ -23,42 +23,32 @@
       </div>
     </div>
 
-    <!-- HUD محیطی -->
-    <div id="hud-environment">
-      <div id="time-display">☀️ روز</div>
-      <div id="weather-display">🌤️ صاف</div>
-    </div>
-
-    <!-- دکمه‌های toggle سگ -->
-    <div id="dog-toggles">
-      <button id="btn-dog-loot" class="active" title="برداشتن اشیا">🎒</button>
-      <button id="btn-dog-alert" class="active" title="هشدار زامبی">👁️</button>
-    </div>
-
     <div id="toast"></div>
     <div id="range-label"></div>
 
-    <!-- جوی‌استیک‌ها -->
+    <!-- جوی‌استیک حرکت (چپ) -->
     <div id="joystick-zone">
       <div id="joystick-base"><div id="joystick-stick"></div></div>
     </div>
+
+    <!-- جوی‌استیک هدف‌گیری / حمله (راست) -->
     <div id="aim-zone">
       <div id="aim-base"><div id="aim-stick"></div></div>
     </div>
 
-    <!-- دکمه تعامل -->
+    <!-- دکمه تعامل (برداشتن منبع / سوار ماشین) -->
     <div id="action-buttons">
       <button id="btn-interact">✋</button>
     </div>
 
-    <!-- منوی پایین -->
+    <!-- منوی پایین (Craft / Build / Item) -->
     <div id="bottom-menu">
       <button data-panel="inventory">🎒 آیتم</button>
       <button data-panel="craft">🛠️ ساخت</button>
       <button data-panel="build">🏠 بنا</button>
     </div>
 
-    <!-- پنل -->
+    <!-- پنل‌ها -->
     <div id="panel-overlay" class="hidden">
       <div id="panel-box">
         <div id="panel-header">
@@ -70,11 +60,10 @@
       </div>
     </div>
 
-    <div id="loading">در حال بارگذاری دنیا ... (نسخه v8)</div>
+    <div id="loading">در حال بارگذاری دنیا ... (نسخه v7)</div>
   </div>
 
   <script src="dog.js"></script>
-  <script src="npc.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
