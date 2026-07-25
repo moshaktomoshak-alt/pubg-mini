@@ -63,7 +63,6 @@ const ITEM_FA = {
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
 };
 
-// ========== افزودن ایموجی ==========
 const ITEM_EMOJI = {
   wood: "🪵", stone: "🪨", metal: "🔩", cloth: "🧵", food: "🍗", water: "💧", corn: "🌽",
   axe: "🪓", pick: "⛏️", knife: "🔪", wrench: "🔧", bandage: "🩹",
@@ -88,7 +87,6 @@ const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
 
-// راهنمای تصویری با تب‌بندی (محتوای تب‌ها)
 const HELP_TABS = [
   { id: "controls", label: "🎮 کنترل", content: "🕹️ حرکت با جوی‌استیک چپ\n🎯 هدف‌گیری با جوی‌استیک راست\n✋ دکمه تعامل برای برداشت/سوارشدن" },
   { id: "resources", label: "🌲 منابع", content: "🌳 درخت → چوب\n🪨 سنگ → سنگ\n📦 بشکه → فلز\n🌿 بوته → پارچه\n🍓 بوته قرمز → غذا\n💧 چشمه → آب\n🌽 ذرت → ذرت" },
@@ -98,7 +96,6 @@ const HELP_TABS = [
   { id: "car", label: "🚗 ماشین", content: "۱. موتور رو با ۳ فلز + ۲ سنگ تعمیر کن\n۲. با قوطی بنزین پر کن (ذرت ۴)\n۳. سوار شو و حرکت کن\n۴. بدنه با آچار تعمیر میشه" },
 ];
 
-// ==================== تصاویر ====================
 const IMG_SRC = {
   player: "player.png",
   zombie1: "zombie1_walk.png",
@@ -226,7 +223,6 @@ function drawZombieLimbs(x, y, facing, walkPhase) {
   ctx.restore();
 }
 
-// ==================== Telegram WebApp ====================
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (tg) {
   tg.ready();
@@ -241,7 +237,6 @@ try {
 
 const initData = tg ? tg.initData : "";
 
-// ==================== وضعیت بازی (با craftingQueue) ====================
 let state = null;
 let zombies = [];
 let lastZombieSpawn = 0;
@@ -281,7 +276,6 @@ function physicalPointToLocal(px, py) {
   return { x: py, y: w - px };
 }
 
-// ==================== تصادفی قطعی ====================
 function hash2(x, y, seed) {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
   return n - Math.floor(n);
@@ -329,7 +323,6 @@ function moveWithCollision(entity, dx, dy, solidFn) {
     if (!solidFn(tx, ty)) entity.y = ny;
   }
 }
-// ==================== ماشین‌های پخش‌شده تو نقشه ====================
 function sectorCarInfo(sx, sy) {
   const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
   if (h > CAR_SECTOR_CHANCE) return null;
@@ -399,7 +392,6 @@ function nearestCar() {
   return best;
 }
 
-// ==================== بارگذاری / ذخیره / ریست ====================
 async function loadState() {
   try {
     const controller = new AbortController();
@@ -480,7 +472,6 @@ async function onDeath() {
   }, 1600);
 }
 
-// ==================== جوی‌استیک ====================
 function setupStick(zoneId, stickId, onMove, onRelease) {
   const zone = document.getElementById(zoneId);
   const stick = document.getElementById(stickId);
@@ -535,7 +526,6 @@ setupStick("aim-zone", "aim-stick",
   () => { aimVec.x = 0; aimVec.y = 0; }
 );
 
-// ==================== تپ روی صحنه ====================
 canvas.addEventListener("click", (e) => {
   const p = physicalPointToLocal(e.clientX, e.clientY);
   onTapScreen(p.x, p.y);
@@ -582,7 +572,6 @@ document.getElementById("btn-gps").addEventListener("click", () => {
   toast(waypointArmed ? "روی نقشه بزن تا نشون بذاری" : "لغو شد");
 });
 
-// ==================== منوها ====================
 document.querySelectorAll("#bottom-menu button").forEach((btn) => {
   btn.addEventListener("click", () => openPanel(btn.dataset.panel));
 });
@@ -698,7 +687,6 @@ function openPanel(kind, carKey) {
     }
   }
 }
-// ==================== پنل ماشین ====================
 function renderCarPanel(title, content, carKey) {
   currentCarKey = carKey || "main";
   const car = getCarState(currentCarKey);
@@ -799,12 +787,11 @@ function exitCar() {
   drivingCarKey = null;
 }
 
-// ==================== ساخت زمان‌دار (با نوار پیشرفت) ====================
 function startCraft(recipe) {
   for (const [k, v] of Object.entries(recipe.need)) {
     state.inventory[k] -= v;
   }
-  const duration = 3; // ۳ ثانیه
+  const duration = 3;
   state.craftingQueue.push({
     recipeId: recipe.id,
     startTime: performance.now(),
@@ -841,13 +828,11 @@ function drawCraftingProgress() {
       toRemove.push(i);
     }
   }
-  // حذف آیتم‌های کامل‌شده (از آخر به اول)
   for (let i = toRemove.length - 1; i >= 0; i--) {
     state.craftingQueue.splice(toRemove[i], 1);
   }
 }
 
-// ==================== سایر توابع کمکی ====================
 function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
@@ -923,7 +908,6 @@ function doInteract() {
   toast("چیزی برای تعامل نزدیک نیست");
 }
 
-// ==================== حمله ====================
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
@@ -957,7 +941,6 @@ function performAimedAttack() {
   }
 }
 
-// ==================== زامبی‌ها ====================
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
   const ang = Math.random() * Math.PI * 2;
@@ -1011,7 +994,6 @@ function updateZombies(dt) {
   }
 }
 
-// ==================== حرکت بازیکن ====================
 let playerWalkPhase = 0;
 function updatePlayer(dt) {
   const p = state.player;
@@ -1056,7 +1038,6 @@ function updatePlayer(dt) {
   if (p.health <= 0 && !isDead) onDeath();
 }
 
-// ==================== دوربین و رندر ====================
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
 
 function worldToScreen(wx, wy) {
@@ -1262,9 +1243,27 @@ function drawPlayer() {
     ctx.strokeStyle = "#3b2a17"; ctx.lineWidth = 2; ctx.stroke();
   }
   if (now < playerHitFlashUntil) drawHitFlash(s.x, by, 18);
+
+  // ====== نمایش ایموجی هشدار بالای سر پلیر ======
+  const p = state.player;
+  let warningEmoji = "";
+  if (p.health < 30) {
+    warningEmoji = "💔";
+  } else if (p.hunger < 20) {
+    warningEmoji = "🍽️";
+  } else if (p.thirst < 20) {
+    warningEmoji = "💧";
+  }
+  if (warningEmoji) {
+    ctx.save();
+    ctx.font = "28px Tahoma";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(warningEmoji, s.x, s.y - 40);
+    ctx.restore();
+  }
 }
 
-// ==================== حلقه اصلی ====================
 let lastTime = performance.now();
 function loop() {
   const now = performance.now();
@@ -1283,7 +1282,7 @@ function loop() {
     drawZombies();
     drawDog();
     drawWaypoint();
-    drawCraftingProgress(); // نوار پیشرفت ساخت
+    drawCraftingProgress();
     drawPlayer();
     updateHUD();
     if (!isDead && !isPanelOpen) {
@@ -1302,7 +1301,6 @@ function updateHUD() {
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
 }
 
-// ==================== شروع ====================
 (async function init() {
   try {
     await loadState();
