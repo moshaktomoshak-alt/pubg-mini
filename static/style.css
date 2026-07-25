@@ -5,7 +5,6 @@ html, body {
 }
 #game { position: absolute; top: 0; left: 0; display: block; background: #4a7d3f; }
 
-/* پیش‌فرض: گوشی افقیه، rotate-wrap کل صفحه رو پر می‌کنه، چرخشی لازم نیست */
 #rotate-wrap {
   position: fixed;
   top: 0; left: 0;
@@ -13,8 +12,6 @@ html, body {
   overflow: hidden;
 }
 
-/* وقتی گوشی عمودیه: کل بازی رو ۹۰ درجه می‌چرخونیم تا همیشه افقی دیده بشه،
-   بدون نیاز به چرخوندن فیزیکی گوشی یا قفل چرخش سیستم */
 @media (orientation: portrait) {
   #rotate-wrap {
     position: fixed;
@@ -62,7 +59,6 @@ html, body {
 }
 #range-label.show { opacity: 1; }
 
-/* جوی‌استیک حرکت - چپ */
 #joystick-zone {
   position: absolute; left: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
 }
@@ -77,7 +73,6 @@ html, body {
   position: absolute; left: 31px; top: 31px;
 }
 
-/* جوی‌استیک هدف‌گیری - راست */
 #aim-zone {
   position: absolute; right: 16px; bottom: 14px; width: 108px; height: 108px; z-index: 20;
 }
@@ -109,15 +104,35 @@ html, body {
   border-radius: 10px; padding: 6px 10px; font-size: 12px;
 }
 
+/* ========== پنل با انیمیشن ========== */
 #panel-overlay {
-  position: absolute; inset: 0; background: rgba(0,0,0,.55); z-index: 40;
-  display: flex; align-items: center; justify-content: center;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* وقتی بسته است کلیک نمی‌خورد */
+  transition: background 0.25s ease;
 }
-#panel-overlay.hidden { display: none; }
+#panel-overlay:not(.hidden) {
+  background: rgba(0,0,0,0.55);
+  pointer-events: auto;
+}
 #panel-box {
-  width: 92%; max-width: 480px; max-height: 82%; background: #1e1e1e; color: #eee;
-  border-radius: 16px; padding: 10px 12px 16px; overflow-y: auto;
+  width: 92%; max-width: 480px; max-height: 82%;
+  background: #1e1e1e; color: #eee;
+  border-radius: 16px; padding: 10px 12px 16px;
+  overflow-y: auto;
+  transform: scale(0.92) translateY(20px);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
 }
+#panel-overlay:not(.hidden) #panel-box {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
 #panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 #panel-title { font-size: 15px; font-weight: bold; }
 #panel-close { background: none; border: none; color: #fff; font-size: 18px; }
@@ -133,11 +148,9 @@ html, body {
 }
 .item-row button:disabled { background: #555; opacity: .6; }
 
-
 #hud-left-buttons {
   display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; pointer-events: auto;
 }
-
 #btn-help, #btn-gps {
   width: 26px; height: 26px; border-radius: 50%; border: none;
   background: rgba(0,0,0,.5); color: #fff; font-size: 13px;
@@ -153,4 +166,18 @@ html, body {
 
 #panel-feedback {
   min-height: 16px; color: #7bd88f; font-size: 12px; margin-bottom: 6px; text-align: center;
+}
+
+/* دکمه‌های تب در راهنما */
+.tab-btn {
+  background: #333;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: #3d7dd8;
 }

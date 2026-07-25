@@ -63,6 +63,14 @@ const ITEM_FA = {
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
 };
 
+// ========== افزودن ایموجی ==========
+const ITEM_EMOJI = {
+  wood: "🪵", stone: "🪨", metal: "🔩", cloth: "🧵", food: "🍗", water: "💧", corn: "🌽",
+  axe: "🪓", pick: "⛏️", knife: "🔪", wrench: "🔧", bandage: "🩹",
+  wall: "🧱", floor: "🟫", door: "🚪", window: "🪟",
+  engine_part: "⚙️", fuel_can: "⛽",
+};
+
 const WEAPON_RANGE = { fists: 45, knife: 60, axe: 70, pick: 65, wrench: 55 };
 const WEAPON_DAMAGE = { fists: 12, knife: 35, axe: 25, pick: 20, wrench: 15 };
 const WEAPON_COLOR = { fists: null, knife: "#d8d8d8", axe: "#8a5a2b", pick: "#777", wrench: "#5b7fbf" };
@@ -80,20 +88,17 @@ const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
 
-const HELP_TEXT_HTML = `
-<div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
-<div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
-<div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
-<div class="help-item"> <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
-<div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
-<div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
-<div class="help-item"> <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
-<div class="help-item"> <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
-<div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
-${DOG_HELP_TEXT}
-<div class="help-item"> اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
-`;
+// راهنمای تصویری با تب‌بندی (محتوای تب‌ها)
+const HELP_TABS = [
+  { id: "controls", label: "🎮 کنترل", content: "🕹️ حرکت با جوی‌استیک چپ\n🎯 هدف‌گیری با جوی‌استیک راست\n✋ دکمه تعامل برای برداشت/سوارشدن" },
+  { id: "resources", label: "🌲 منابع", content: "🌳 درخت → چوب\n🪨 سنگ → سنگ\n📦 بشکه → فلز\n🌿 بوته → پارچه\n🍓 بوته قرمز → غذا\n💧 چشمه → آب\n🌽 ذرت → ذرت" },
+  { id: "crafting", label: "🛠️ ساخت", content: "تبر (چوب ۵): برد ۷۰\nکلنگ (چوب۳+سنگ۵): برد ۶۵\nچاقو (چوب۲+سنگ۲): برد ۶۰\nآچار (سنگ۴+فلز۳): برد ۵۵\nباند (پارچه۳): +۲۵ سلامتی\nقوطی بنزین (ذرت۴): پر کردن باک" },
+  { id: "building", label: "🏠 بنا", content: "دیوار (چوب۶): جلوی همه رو می‌گیره\nکف (چوب۴): فقط زیبایی\nدر (چوب۵+فلز۲): فقط جلوی زامبی\nپنجره (چوب۳+فلز۱): فقط جلوی زامبی" },
+  { id: "zombie", label: "🧟 زامبی", content: "فقط وقتی نزدیک بشی متوجه می‌شن\nبا سلاح بکش\nاگه توی ماشین باشی به بدنه آسیب می‌زنن" },
+  { id: "car", label: "🚗 ماشین", content: "۱. موتور رو با ۳ فلز + ۲ سنگ تعمیر کن\n۲. با قوطی بنزین پر کن (ذرت ۴)\n۳. سوار شو و حرکت کن\n۴. بدنه با آچار تعمیر میشه" },
+];
 
+// ==================== تصاویر ====================
 const IMG_SRC = {
   player: "player.png",
   zombie1: "zombie1_walk.png",
@@ -236,7 +241,7 @@ try {
 
 const initData = tg ? tg.initData : "";
 
-// ==================== وضعیت بازی ====================
+// ==================== وضعیت بازی (با craftingQueue) ====================
 let state = null;
 let zombies = [];
 let lastZombieSpawn = 0;
@@ -324,7 +329,6 @@ function moveWithCollision(entity, dx, dy, solidFn) {
     if (!solidFn(tx, ty)) entity.y = ny;
   }
 }
-
 // ==================== ماشین‌های پخش‌شده تو نقشه ====================
 function sectorCarInfo(sx, sy) {
   const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
@@ -421,6 +425,7 @@ function normalizeState() {
   }
   if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
   if (state.waypoint === undefined) state.waypoint = null;
+  if (!state.craftingQueue) state.craftingQueue = [];
   initDog();
 }
 
@@ -431,6 +436,7 @@ function freshLocalState() {
     inventory: {}, equipped: null,
     cars: { main: { repaired: false, fuel: 0, health: 100 } },
     modifications: {}, guideSeen: false, waypoint: null,
+    craftingQueue: [],
   };
 }
 
@@ -604,9 +610,25 @@ function openPanel(kind, carKey) {
 
   if (kind === "help") {
     title.textContent = "📖 راهنما";
-    content.innerHTML = HELP_TEXT_HTML;
+    let activeTab = HELP_TABS[0].id;
+    function renderHelpTab(tabId) {
+      const tab = HELP_TABS.find(t => t.id === tabId);
+      if (!tab) return;
+      content.innerHTML = `
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+          ${HELP_TABS.map(t => `<button class="tab-btn ${t.id===tabId?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('')}
+        </div>
+        <div style="background:#2a2a2a; border-radius:10px; padding:12px; white-space:pre-wrap; font-size:13px; line-height:1.9;">${tab.content}</div>
+      `;
+      content.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => renderHelpTab(btn.dataset.tab);
+      });
+    }
+    renderHelpTab(activeTab);
+
   } else if (kind === "car") {
     renderCarPanel(title, content, carKey);
+
   } else if (kind === "inventory") {
     title.textContent = "🎒 آیتم‌های من";
     const inv = state.inventory;
@@ -617,7 +639,8 @@ function openPanel(kind, carKey) {
       row.className = "item-row";
       const equippable = ["axe", "pick", "knife", "wrench"].includes(k);
       const rangeTxt = equippable ? `(برد ${WEAPON_RANGE[k]})` : "";
-      row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
+      const emoji = ITEM_EMOJI[k] || "";
+      row.innerHTML = `<span class="name">${emoji} ${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
         const b = document.createElement("button");
         b.textContent = state.equipped === k ? "مجهز شده" : "استفاده";
@@ -649,6 +672,7 @@ function openPanel(kind, carKey) {
       }
       content.appendChild(row);
     }
+
   } else {
     title.textContent = kind === "craft" ? "🛠️ ساخت وسیله" : "🏠 ساخت بنا";
     const list = RECIPES[kind];
@@ -658,15 +682,17 @@ function openPanel(kind, carKey) {
       const costText = Object.entries(r.need).map(([k, v]) => {
         const have = state.inventory[k] || 0;
         const ok = have >= v;
-        return `${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
+        const emoji = ITEM_EMOJI[k] || "";
+        return `${emoji} ${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
       }).join("، ");
       const infoText = r.info ? `<div class="cost">️ ${r.info}</div>` : "";
-      row.innerHTML = `<span class="name">${r.name}<div class="cost">نیاز: ${costText}</div>${infoText}</span>`;
+      const emoji = ITEM_EMOJI[r.id] || "";
+      row.innerHTML = `<span class="name">${emoji} ${r.name}<div class="cost">نیاز: ${costText}</div>${infoText}</span>`;
       const can = Object.entries(r.need).every(([k, v]) => (state.inventory[k] || 0) >= v);
       const b = document.createElement("button");
       b.textContent = "ساخت";
       b.disabled = !can;
-      b.onclick = () => { craft(r); openPanel(kind); };
+      b.onclick = () => { startCraft(r); openPanel(kind); };
       row.appendChild(b);
       content.appendChild(row);
     }
@@ -684,7 +710,8 @@ function renderCarPanel(title, content, carKey) {
     const costText = Object.entries(CAR_ENGINE_NEED).map(([k, v]) => {
       const have = state.inventory[k] || 0;
       const ok = have >= v;
-      return `${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
+      const emoji = ITEM_EMOJI[k] || "";
+      return `${emoji} ${ITEM_FA[k]} ${v} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span>`;
     }).join("، ");
     const can = Object.entries(CAR_ENGINE_NEED).every(([k, v]) => (state.inventory[k] || 0) >= v);
     row.innerHTML = `<span class="name">تعمیر موتور<div class="cost">نیاز: ${costText}</div></span>`;
@@ -772,13 +799,55 @@ function exitCar() {
   drivingCarKey = null;
 }
 
-function craft(recipe) {
-  for (const [k, v] of Object.entries(recipe.need)) state.inventory[k] -= v;
-  for (const [k, v] of Object.entries(recipe.give)) state.inventory[k] = (state.inventory[k] || 0) + v;
-  panelFeedback(recipe.name + " ساخته شد ✅");
-  toast(recipe.name + " ساخته شد ✅");
+// ==================== ساخت زمان‌دار (با نوار پیشرفت) ====================
+function startCraft(recipe) {
+  for (const [k, v] of Object.entries(recipe.need)) {
+    state.inventory[k] -= v;
+  }
+  const duration = 3; // ۳ ثانیه
+  state.craftingQueue.push({
+    recipeId: recipe.id,
+    startTime: performance.now(),
+    duration: duration,
+    recipe: recipe,
+  });
+  panelFeedback("ساخت شروع شد ⏳");
+  toast("در حال ساخت " + recipe.name + "...");
 }
 
+function drawCraftingProgress() {
+  const now = performance.now();
+  const toRemove = [];
+  for (let i = 0; i < state.craftingQueue.length; i++) {
+    const item = state.craftingQueue[i];
+    const elapsed = (now - item.startTime) / 1000;
+    const progress = Math.min(1, elapsed / item.duration);
+    const x = 10, y = 70 + i * 22;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(x, y, 120, 14);
+    ctx.fillStyle = "#58c46b";
+    ctx.fillRect(x + 2, y + 2, 116 * progress, 10);
+    ctx.fillStyle = "#fff";
+    ctx.font = "10px Tahoma";
+    ctx.textAlign = "left";
+    const emoji = ITEM_EMOJI[item.recipe.id] || "";
+    ctx.fillText(`${emoji} ${item.recipe.name}`, x + 4, y + 11);
+    if (progress >= 1) {
+      const give = item.recipe.give;
+      for (const [k, v] of Object.entries(give)) {
+        state.inventory[k] = (state.inventory[k] || 0) + v;
+      }
+      toast(item.recipe.name + " ساخته شد ✅");
+      toRemove.push(i);
+    }
+  }
+  // حذف آیتم‌های کامل‌شده (از آخر به اول)
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    state.craftingQueue.splice(toRemove[i], 1);
+  }
+}
+
+// ==================== سایر توابع کمکی ====================
 function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
@@ -796,7 +865,6 @@ function consumeItem(k) {
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
 }
 
-// ==================== toast ====================
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -805,7 +873,6 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
 }
 
-// ==================== جاگذاری سازه ====================
 function tryPlace(wx, wy) {
   const tx = Math.round(wx / TILE), ty = Math.round(wy / TILE);
   const dist = Math.hypot(wx - state.player.x, wy - state.player.y);
@@ -819,7 +886,6 @@ function tryPlace(wx, wy) {
   placeMode = null;
 }
 
-// ==================== تعامل نزدیک ====================
 function nearestResource() {
   const px = state.player.x, py = state.player.y;
   const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
@@ -839,15 +905,12 @@ function nearestResource() {
 
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
-
   if (inCar && drivingCarKey) {
     openPanel("car", drivingCarKey);
     return;
   }
-
   const car = nearestCar();
   if (car) { openPanel("car", car.key); return; }
-
   const res = nearestResource();
   if (res) {
     const def = RESOURCE_NODES[res.res];
@@ -1166,7 +1229,7 @@ function drawPlayer() {
     ctx.stroke();
     ctx.restore();
     const label = document.getElementById("range-label");
-    label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
+    label.textContent = `${ITEM_EMOJI[currentWeaponKey()]||''} ${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
     label.classList.add("show");
   } else {
     document.getElementById("range-label").classList.remove("show");
@@ -1220,6 +1283,7 @@ function loop() {
     drawZombies();
     drawDog();
     drawWaypoint();
+    drawCraftingProgress(); // نوار پیشرفت ساخت
     drawPlayer();
     updateHUD();
     if (!isDead && !isPanelOpen) {
