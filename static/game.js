@@ -77,12 +77,12 @@ const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
 const INTERACT_RANGE = 55;
 const ZOMBIE_SPEED = 1.1;
-const ZOMBIE_SIGHT_RANGE = 230;
+const ZOMBIE_SIGHT_RANGE = 300;
 const ZOMBIE_LOSE_INTEREST = 420;
 const PLAYER_SPEED = 2.6;
 const ZOMBIE_DAMAGE = 6;
-const ZOMBIE_MAX = 8;
-const ZOMBIE_SPAWN_EVERY = 7000;
+const ZOMBIE_MAX = 20;
+const ZOMBIE_SPAWN_EVERY = 2000;
 const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
@@ -944,7 +944,7 @@ function performAimedAttack() {
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
   const ang = Math.random() * Math.PI * 2;
-  const dist = 420 + Math.random() * 150;
+  const dist = 350 + Math.random() * 400;
   zombies.push({
     x: state.player.x + Math.cos(ang) * dist,
     y: state.player.y + Math.sin(ang) * dist,
@@ -960,7 +960,10 @@ function spawnZombie() {
 
 function updateZombies(dt) {
   const now = performance.now();
-  if (now - lastZombieSpawn > ZOMBIE_SPAWN_EVERY) { spawnZombie(); lastZombieSpawn = now; }
+  if (zombies.length < ZOMBIE_MAX && now - lastZombieSpawn > ZOMBIE_SPAWN_EVERY) {
+    spawnZombie();
+    lastZombieSpawn = now;
+  }
   for (const z of zombies) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -1248,15 +1251,15 @@ function drawPlayer() {
   const p = state.player;
   let warningEmoji = "";
   if (p.health < 30) {
-    warningEmoji = "💔";
+    warningEmoji = "❤️";
   } else if (p.hunger < 20) {
-    warningEmoji = "🍽️";
+    warningEmoji = "🍗";
   } else if (p.thirst < 20) {
     warningEmoji = "💧";
   }
   if (warningEmoji) {
     ctx.save();
-    ctx.font = "17px Tahoma";
+    ctx.font = "16px Tahoma";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillText(warningEmoji, s.x, s.y - 22);
