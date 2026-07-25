@@ -11,7 +11,7 @@ const DOG_COLLECT_RANGE = 80;
 let dog = null;
 
 // ==================== رسم سگ از نمای بالا ====================
-function drawDogTopDown(x, y, facing, walkPhase, isDowned, mode) {
+function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(facing);
@@ -95,18 +95,6 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned, mode) {
     ctx.moveTo(size * 0.95, size * 0.1);
     ctx.lineTo(size * 0.85, size * 0.2);
     ctx.stroke();
-  }
-
-  if (!isDowned && mode === 'collect') {
-    ctx.fillStyle = "#ffd700";
-    ctx.font = "10px Tahoma";
-    ctx.textAlign = "center";
-    ctx.fillText("📦", size * 1.2, -size * 0.5);
-  } else if (!isDowned && mode === 'attack') {
-    ctx.fillStyle = "#ff4444";
-    ctx.font = "10px Tahoma";
-    ctx.textAlign = "center";
-    ctx.fillText("⚔️", size * 1.2, -size * 0.5);
   }
 
   ctx.restore();
@@ -247,7 +235,7 @@ function updateDog(dt) {
 function drawDog() {
   if (!dog) return;
   const s = worldToScreen(dog.x, dog.y);
-  drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned, dog.mode);
+  drawDogTopDown(s.x, s.y, dog.facing, dog.walkPhase, dog.isDowned);
 
   const barWidth = 30;
   const barHeight = 4;
@@ -262,8 +250,7 @@ function drawDog() {
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
-  const modeIcon = dog.mode === 'attack' ? '⚔️' : '📦';
-  ctx.fillText(`🐕 ${modeIcon}`, s.x, s.y - 28);
+  ctx.fillText(`🐕`, s.x, s.y - 28);
 }
 
 function healDog(foodType) {
