@@ -1256,10 +1256,10 @@ function drawPlayer() {
   }
   if (warningEmoji) {
     ctx.save();
-    ctx.font = "20px Tahoma";
+    ctx.font = "17px Tahoma";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText(warningEmoji, s.x, s.y - 25);
+    ctx.fillText(warningEmoji, s.x, s.y - 22);
     ctx.restore();
   }
 }
