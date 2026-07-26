@@ -7,6 +7,7 @@ const DOG_ATTACK_INTERVAL = 800;
 const DOG_MAX_HP = 100;
 const DOG_FOLLOW_DISTANCE = 60;
 const DOG_COLLECT_RANGE = 80;
+const DOG_DELIVER_DISTANCE = 20; // فاصله‌ی تحویل منبع به پلیر
 
 let dog = null;
 
@@ -204,7 +205,7 @@ function updateDog(dt) {
       const dx = state.player.x - dog.x;
       const dy = state.player.y - dog.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < DOG_FOLLOW_DISTANCE) {
+      if (dist < DOG_DELIVER_DISTANCE) {
         dog.collectState = 'idle';
         dog.facing = Math.atan2(dy, dx);
       } else {
