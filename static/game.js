@@ -25,10 +25,8 @@ const RESOURCE_DENSITY = 0.065;
 
 const RECIPES = {
   craft: [
-    { id: "axe",     name: "تبر",        need: { wood: 5 },              give: { axe: 1 },     info: "دمیج 25 — برد 70" },
-    { id: "pick",    name: "کلنگ",       need: { wood: 3, stone: 5 },    give: { pick: 1 },    info: "دمیج 20 — برد 65" },
     { id: "knife",   name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 },   info: "دمیج 35 — برد 60" },
-    { id: "wrench",  name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },  info: "دمیج 15 — برد 55 — همچنین برای تعمیر بدنه ماشین" },
+    { id: "wrench",  name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },  info: "فقط برای تعمیر بدنه ماشین — سلاح نیست" },
     { id: "bandage", name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
     { id: "fuel_can",name: "قوطی بنزین", need: { corn: 4 },              give: { fuel_can: 1 },info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
     { id: "handgun", name: "تپانچه",     need: { metal: 6, wood: 2 },    give: { handgun: 1 }, info: "دمیج 22 — برد 150 — اسلحه‌ی گرم" },
@@ -62,15 +60,15 @@ const SOLID_FOR_PLAYER = { wall: true };
 
 const ITEM_FA = {
   wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت",
-  axe: "تبر", pick: "کلنگ", knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
+  knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
   wall: "دیوار", floor: "کف", door: "در", window: "پنجره",
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
   handgun: "تپانچه", rifle: "تفنگ", shotgun: "شاتگان",
 };
 
-const WEAPON_RANGE = { fists: 45, knife: 60, axe: 70, pick: 65, wrench: 55, handgun: 150, rifle: 220, shotgun: 95 };
-const WEAPON_DAMAGE = { fists: 12, knife: 35, axe: 25, pick: 20, wrench: 15, handgun: 22, rifle: 30, shotgun: 45 };
-const WEAPON_COLOR = { fists: null, knife: "#d8d8d8", axe: "#8a5a2b", pick: "#777", wrench: "#5b7fbf" };
+const WEAPON_RANGE = { fists: 45, knife: 60, handgun: 150, rifle: 220, shotgun: 95 };
+const WEAPON_DAMAGE = { fists: 12, knife: 35, handgun: 22, rifle: 30, shotgun: 45 };
+const WEAPON_COLOR = { fists: null, knife: "#d8d8d8" };
 const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
 
@@ -213,7 +211,7 @@ const PLAYER_SHEETS = {
 };
 // سلاح‌هایی که پک عکس مخصوص ندارن (تبر/کلنگ/آچار) موقتاً از انیمیشن دست‌خالی استفاده می‌کنن
 const WEAPON_TO_SHEET_CATEGORY = {
-  fists: "unarmed", axe: "unarmed", pick: "unarmed", wrench: "unarmed",
+  fists: "unarmed",
   knife: "knife", handgun: "handgun", rifle: "rifle", shotgun: "shotgun",
 };
 const ATTACK_ANIM_MS = 260; // مدت پخش انیمیشن ضربه/شلیک
@@ -663,7 +661,7 @@ function openPanel(kind, carKey) {
     for (const k of keys) {
       const row = document.createElement("div");
       row.className = "item-row";
-      const equippable = ["axe", "pick", "knife", "wrench", "handgun", "rifle", "shotgun"].includes(k);
+      const equippable = ["knife", "handgun", "rifle", "shotgun"].includes(k);
       const rangeTxt = equippable ? ` (برد ${WEAPON_RANGE[k]})` : "";
       row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
