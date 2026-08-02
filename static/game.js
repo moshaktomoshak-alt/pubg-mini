@@ -1,5 +1,5 @@
 // ==================== نمایش خطای واقعی به‌جای «در حال بارگذاری» بی‌پایان ====================
-window.addEventListener("error", function (e) {
+window.addEventListener("error", function(e) {
   const el = document.getElementById("loading");
   if (el) {
     el.style.display = "flex";
@@ -10,7 +10,7 @@ window.addEventListener("error", function (e) {
 });
 
 // ==================== محافظ نهایی: اگه هرچی شد بعد از ۸ ثانیه گیر نکنه ====================
-setTimeout(function () {
+setTimeout(function() {
   const el = document.getElementById("loading");
   if (el && el.style.display !== "none") {
     el.style.fontSize = "13px";
@@ -22,22 +22,21 @@ setTimeout(function () {
 // ==================== تنظیمات پایه ====================
 const TILE = 40;
 const RESOURCE_DENSITY = 0.065;
-
 const RECIPES = {
   craft: [
-    { id: "knife",   name: "چاقو",       need: { wood: 2, stone: 2 },    give: { knife: 1 },   info: "دمیج 35 — برد 60" },
-    { id: "wrench",  name: "آچار",       need: { stone: 4, metal: 3 },   give: { wrench: 1 },  info: "فقط برای تعمیر بدنه ماشین — سلاح نیست" },
-    { id: "bandage", name: "باند زخم",   need: { cloth: 3 },             give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
-    { id: "fuel_can",name: "قوطی بنزین", need: { corn: 4 },              give: { fuel_can: 1 },info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
-    { id: "handgun", name: "تپانچه",     need: { metal: 6, wood: 2 },    give: { handgun: 1 }, info: "دمیج 22 — برد 150 — اسلحه‌ی گرم" },
-    { id: "shotgun", name: "شاتگان",     need: { metal: 8, wood: 5 },    give: { shotgun: 1 }, info: "دمیج 45 — برد 95 — اسلحه‌ی گرم" },
-    { id: "rifle",   name: "تفنگ",       need: { metal: 10, wood: 4, stone: 2 }, give: { rifle: 1 }, info: "دمیج 30 — برد 220 — اسلحه‌ی گرم" },
+    { id: "knife", name: "چاقو", need: { wood: 2, stone: 2 }, give: { knife: 1 }, info: "دمیج 35 — برد 60" },
+    { id: "wrench", name: "آچار", need: { stone: 4, metal: 3 }, give: { wrench: 1 }, info: "فقط برای تعمیر بدنه ماشین — سلاح نیست" },
+    { id: "bandage", name: "باند زخم", need: { cloth: 3 }, give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
+    { id: "fuel_can", name: "قوطی بنزین", need: { corn: 4 }, give: { fuel_can: 1 }, info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
+    { id: "handgun", name: "تپانچه", need: { metal: 6, wood: 2 }, give: { handgun: 1 }, info: "دمیج 22 — برد 150 — اسلحه‌ی گرم" },
+    { id: "shotgun", name: "شاتگان", need: { metal: 8, wood: 5 }, give: { shotgun: 1 }, info: "دمیج 45 — برد 95 — اسلحه‌ی گرم" },
+    { id: "rifle", name: "تفنگ", need: { metal: 10, wood: 4, stone: 2 }, give: { rifle: 1 }, info: "دمیج 30 — برد 220 — اسلحه‌ی گرم" },
   ],
   build: [
-    { id: "wall",   name: "دیوار چوبی", need: { wood: 6 },            give: { wall: 1 } },
-    { id: "floor",  name: "کف چوبی",    need: { wood: 4 },            give: { floor: 1 } },
-    { id: "door",   name: "در",         need: { wood: 5, metal: 2 },  give: { door: 1 } },
-    { id: "window", name: "پنجره",      need: { wood: 3, metal: 1 },  give: { window: 1 } },
+    { id: "wall", name: "دیوار چوبی", need: { wood: 6 }, give: { wall: 1 } },
+    { id: "floor", name: "کف چوبی", need: { wood: 4 }, give: { floor: 1 } },
+    { id: "door", name: "در", need: { wood: 5, metal: 2 }, give: { door: 1 } },
+    { id: "window", name: "پنجره", need: { wood: 3, metal: 1 }, give: { window: 1 } },
   ],
 };
 
@@ -45,13 +44,13 @@ const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
 const CAR_COLORS = ["engine_blue", "engine_yellow", "engine_green", "engine_black", "engine_orange"];
 
 const RESOURCE_NODES = {
-  tree: { gives: "wood",  amount: [1, 3], images: ["tree1", "tree2", "tree_user", "wood_small"], drawH: 36, color: "#2e6b1f", radius: 10 },
+  tree: { gives: "wood", amount: [1, 3], images: ["tree1", "tree2", "tree_user", "wood_small"], drawH: 36, color: "#2e6b1f", radius: 10 },
   rock: { gives: "stone", amount: [1, 2], images: ["rock1", "rock2", "rock3"], drawH: 24, color: "#8a8a8a", radius: 9 },
-  scrap:{ gives: "metal", amount: [1, 2], images: ["crate1_user", "crate2_user"], drawH: 26, color: "#b5652b", radius: 8 },
+  scrap: { gives: "metal", amount: [1, 2], images: ["crate1_user", "crate2_user"], drawH: 26, color: "#b5652b", radius: 8 },
   bush: { gives: "cloth", amount: [1, 1], color: "#7a9e4a", radius: 7 },
-  berry:{ gives: "food",  amount: [1, 2], color: "#c73f5c", radius: 6 },
+  berry: { gives: "food", amount: [1, 2], color: "#c73f5c", radius: 6 },
   well: { gives: "water", amount: [1, 2], color: "#3f7fc7", radius: 7 },
-  corn: { gives: "corn",  amount: [1, 2], color: "#e8c93a", radius: 7 },
+  corn: { gives: "corn", amount: [1, 2], color: "#e8c93a", radius: 7 },
 };
 
 const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5" };
@@ -71,7 +70,6 @@ const WEAPON_DAMAGE = { fists: 12, knife: 35, handgun: 22, rifle: 30, shotgun: 4
 const WEAPON_COLOR = { fists: null, knife: "#d8d8d8" };
 const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
-
 const INTERACT_RANGE = 55;
 const ZOMBIE_SPEED = 1.1;
 const ZOMBIE_SIGHT_RANGE = 230;
@@ -79,25 +77,24 @@ const ZOMBIE_LOSE_INTEREST = 420;
 const PLAYER_SPEED = 2.6;
 const ZOMBIE_DAMAGE = 6;
 const ZOMBIE_MAX = 8;
-const ZOMBIE_DESPAWN_DIST = 1400; // خیلی دورتر از این بشه، زامبی حذف می‌شه تا جا برای اسپاون جدید باز بشه
+const ZOMBIE_DESPAWN_DIST = 1400;
 const ZOMBIE_SPAWN_EVERY = 7000;
-
 const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
 
 const HELP_TEXT_HTML = `
-  <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
-  <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
-  <div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
-  <div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
-  <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
-  <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
-  <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
-  <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
-  <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
-  <div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی/بی‌حرکت شد، با غذا (✋ کنارش) دوباره جون می‌گیره</div>
-  <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
+<div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
+<div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
+<div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
+<div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
+<div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
+<div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
+<div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
+<div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
+<div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
+<div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی/بی‌حرکت شد، با غذا (✋ کنارش) دوباره جون می‌گیره</div>
+<div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
 
 const IMG_SRC = {
@@ -174,14 +171,14 @@ const ZOMBIE_SHEETS = {
 };
 
 const DOG_SHEET = { frames: 6, w: 141, h: 60 };
-const DOG_SPEED = 3.1;             // یه‌کم سریع‌تر از بازیکن تا بتونه بهش برسه
-const DOG_FOLLOW_DIST = 55;        // این‌قدر که از بازیکن فاصله بگیره، دنبالش راه می‌افته
-const DOG_DETECT_RANGE = 180;      // تو این فاصله زامبی رو می‌بینه و بهش حمله می‌کنه
+const DOG_SPEED = 3.1;
+const DOG_FOLLOW_DIST = 55;
+const DOG_DETECT_RANGE = 180;
 const DOG_ATTACK_RANGE = 34;
 const DOG_ATTACK_INTERVAL = 650;
 const DOG_DAMAGE = 18;
 
-// اسپرایت‌شیت‌های واقعی بازیکن (پک Top Down Survivor)، به‌ازای هر دسته‌ی سلاح یه ست idle/walk/attack
+// اسپرایت‌شیت‌های واقعی بازیکن (پک Top Down Survivor)
 const PLAYER_SHEETS = {
   unarmed: {
     idle: { key: "p_unarmed_idle", frames: 1, w: 29, h: 34 },
@@ -209,12 +206,13 @@ const PLAYER_SHEETS = {
     attack: { key: "p_shotgun_shoot", frames: 3, w: 56, h: 34 },
   },
 };
-// سلاح‌هایی که پک عکس مخصوص ندارن (تبر/کلنگ/آچار) موقتاً از انیمیشن دست‌خالی استفاده می‌کنن
+
 const WEAPON_TO_SHEET_CATEGORY = {
   fists: "unarmed",
   knife: "knife", handgun: "handgun", rifle: "rifle", shotgun: "shotgun",
 };
-const ATTACK_ANIM_MS = 260; // مدت پخش انیمیشن ضربه/شلیک
+
+const ATTACK_ANIM_MS = 260;
 
 function drawSpriteFrameRotated(im, sheet, frameIndex, x, y, targetH, angle) {
   if (!imgReady(im)) return false;
@@ -238,8 +236,6 @@ function drawHitFlash(x, y, radius) {
   ctx.restore();
 }
 
-// دست و پای ساده‌ی رویه‌ای (چون اسپرایت‌ها لایه‌ی جدا برای عضو ندارن) + سلاح تو دست
-// قرارداد محور: جهت جلو = +X (هم‌راستا با مخروط حمله)، پهلو = +Y
 function drawZombieLimbs(x, y, facing, walkPhase) {
   const stride = Math.sin(walkPhase) * 4;
   ctx.save();
@@ -248,7 +244,6 @@ function drawZombieLimbs(x, y, facing, walkPhase) {
   ctx.fillStyle = "#2f5d33";
   ctx.fillRect(-10 + stride * 0.5, -6, 7, 5);
   ctx.fillRect(-10 - stride * 0.5, 1, 7, 5);
-  // دست‌های دراز به جلو (حالت کلاسیک زامبی)
   ctx.fillStyle = "#4a7a4e";
   ctx.beginPath(); ctx.arc(11, -6, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(11, 6, 3.5, 0, Math.PI * 2); ctx.fill();
@@ -262,11 +257,13 @@ if (tg) {
   tg.expand();
   try { if (tg.lockOrientation) tg.lockOrientation(); } catch (e) {}
 }
+
 try {
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock("landscape").catch(() => {});
   }
 } catch (e) {}
+
 const initData = tg ? tg.initData : "";
 
 // ==================== وضعیت بازی ====================
@@ -280,10 +277,9 @@ let currentCarKey = null;
 let drivingCarKey = null;
 let isDead = false;
 let isPanelOpen = false;
-let isHidden = false; // وقتی صفحه/تب دیده نمی‌شه (پس‌زمینه یا بسته)، بازی کاملاً متوقف می‌شه
-let dog = null; // سگ همراه پلیر
+let isHidden = false;
+let dog = null;
 let lastDogAttack = 0;
-
 let playerFacing = Math.PI / 2;
 let lastAttackTime = 0;
 let playerHitFlashUntil = 0;
@@ -293,14 +289,12 @@ const canvas = document.getElementById("game");
 const loadingEl = document.getElementById("loading");
 const ctx = canvas.getContext("2d");
 const rotateWrap = document.getElementById("rotate-wrap");
+
 function resize() { canvas.width = rotateWrap.clientWidth; canvas.height = rotateWrap.clientHeight; }
 addEventListener("resize", resize);
 addEventListener("orientationchange", resize);
 resize();
 
-// وقتی گوشی عمودیه، کل بازی با CSS ۹۰ درجه می‌چرخه تا افقی دیده بشه؛
-// ولی رویدادهای لمسی هنوز تو مختصات واقعیِ (عمودیِ) صفحه میان، پس باید تبدیلشون کنیم
-// به مختصات محلیِ داخل rotate-wrap (که همیشه افقیه).
 function isForcedPortrait() { return window.innerWidth < window.innerHeight; }
 
 function physicalDeltaToLocal(dpx, dpy) {
@@ -344,6 +338,7 @@ function isSolidForPlayer(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_PLAYER[b]);
 }
+
 function isSolidForZombie(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_ZOMBIE[b]);
@@ -361,170 +356,6 @@ function moveWithCollision(entity, dx, dy, solidFn) {
     if (!solidFn(tx, ty)) entity.y = ny;
   }
 }
-
-// ==================== ماشین‌های پخش‌شده تو نقشه ====================
-function sectorCarInfo(sx, sy) {
-  const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
-  if (h > CAR_SECTOR_CHANCE) return null;
-  const ox = (hash2(sx + 0.11, sy + 0.22, state.worldSeed + 55) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
-  const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
-  const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
-  return {
-    key: "s_" + sx + "_" + sy,
-    x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox,
-    y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy,
-    color: CAR_COLORS[colorIdx],
-  };
-}
-
-function carInfoFromKey(key) {
-  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" };
-  const m = key.match(/^s_(-?\d+)_(-?\d+)$/);
-  if (!m) return null;
-  return sectorCarInfo(parseInt(m[1], 10), parseInt(m[2], 10));
-}
-
-function getAllNearbyCars() {
-  const map = new Map();
-  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" }];
-  const psx = Math.floor(state.player.x / CAR_SECTOR_SIZE);
-  const psy = Math.floor(state.player.y / CAR_SECTOR_SIZE);
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dy = -2; dy <= 2; dy++) {
-      const info = sectorCarInfo(psx + dx, psy + dy);
-      if (info) base.push(info);
-    }
-  }
-  for (const c of base) map.set(c.key, c);
-
-  // ماشینی که قبلاً روندیمش و جای دیگه پارک شده، حتی اگه از سکتورهای اطراف فعلی دور باشه،
-  // همیشه باید پیدا بشه (وگرنه بعد از تموم شدن بنزین دور از خونه‌ی اصلیش، غیب می‌شد)
-  for (const key of Object.keys(state.cars)) {
-    const saved = state.cars[key];
-    if (!saved || saved.posX === undefined) continue;
-    let entry = map.get(key);
-    if (!entry) {
-      entry = carInfoFromKey(key);
-      if (!entry) continue;
-    }
-    map.set(key, { key, x: saved.posX, y: saved.posY, color: entry.color });
-  }
-  return Array.from(map.values());
-}
-
-function getCarState(key) {
-  if (!state.cars[key]) {
-    state.cars[key] = { repaired: false, fuel: 0, health: 100 };
-  }
-  return state.cars[key];
-}
-
-function nearestCar() {
-  const cars = getAllNearbyCars();
-  let best = null, bestD = INTERACT_RANGE + 20;
-  for (const c of cars) {
-    const d = Math.hypot(c.x - state.player.x, c.y - state.player.y);
-    if (d < bestD) { bestD = d; best = c; }
-  }
-  return best;
-}
-
-// ==================== بارگذاری / ذخیره / ریست ====================
-async function loadState() {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-    const res = await fetch("/api/load", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    const data = await res.json();
-    if (data.ok) { state = data.state; normalizeState(); return; }
-  } catch (e) {
-    toast("اتصال به سرور برقرار نشد — حالت آزمایشی (ذخیره نمی‌شه)");
-  }
-  state = freshLocalState();
-  normalizeState();
-}
-
-function normalizeState() {
-  if (!state.cars) state.cars = {};
-  if (state.car && !state.cars.main) {
-    state.cars.main = { repaired: !!state.car.repaired, fuel: state.car.fuel || 0, health: state.car.health ?? 100 };
-  }
-  if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
-  if (state.waypoint === undefined) state.waypoint = null;
-  if (!state.dog) state.dog = { health: 100, downed: false };
-  initDog();
-}
-
-function initDog() {
-  dog = {
-    x: state.player.x - 45,
-    y: state.player.y + 10,
-    health: state.dog.health,
-    downed: state.dog.downed,
-    facing: 0,
-    walkPhase: Math.random() * 10,
-    hitFlashUntil: 0,
-  };
-}
-
-function freshLocalState() {
-  return {
-    worldSeed: Math.floor(Math.random() * 100000),
-    player: { x: 0, y: 0, health: 100, hunger: 100, thirst: 100, stamina: 100 },
-    inventory: {}, equipped: null,
-    cars: { main: { repaired: false, fuel: 0, health: 100 } },
-    modifications: {}, guideSeen: false, waypoint: null,
-    dog: { health: 100, downed: false },
-  };
-}
-
-let saveTimer = 0;
-function saveState() {
-  if (!initData || isDead) return;
-  fetch("/api/save", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ initData, state }),
-  }).catch(() => {});
-}
-
-async function onDeath() {
-  if (isDead) return;
-  isDead = true;
-  zombies = [];
-  placeMode = null;
-  waypointArmed = false;
-  inCar = false;
-  drivingCarKey = null;
-  loadingEl.textContent = "💀 مُردی... دنیای جدیدی در حال ساخته شدنه";
-  loadingEl.style.display = "flex";
-
-  if (initData) {
-    try {
-      const res = await fetch("/api/reset", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData }),
-      });
-      const data = await res.json();
-      state = data.ok ? data.state : freshLocalState();
-      normalizeState();
-    } catch (e) {
-      state = freshLocalState();
-    }
-  } else {
-    state = freshLocalState();
-  }
-
-  setTimeout(() => {
-    loadingEl.style.display = "none";
-    isDead = false;
-  }, 1600);
-}
-
 // ==================== جوی‌استیک ====================
 function setupStick(zoneId, stickId, onMove, onRelease) {
   const zone = document.getElementById(zoneId);
@@ -537,8 +368,8 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
     let dx = raw.x, dy = raw.y;
     const dist = Math.hypot(dx, dy);
     if (dist > MAX) { dx = dx / dist * MAX; dy = dy / dist * MAX; }
-    stick.style.left = 31 + dx + "px";
-    stick.style.top = 31 + dy + "px";
+    stick.style.left = (31 + dx) + "px";
+    stick.style.top = (31 + dy) + "px";
     onMove(dx / MAX, dy / MAX);
   }
   function reset() {
@@ -546,6 +377,7 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
     stick.style.left = "31px"; stick.style.top = "31px";
     onRelease();
   }
+
   zone.addEventListener("touchstart", (e) => {
     const t = e.changedTouches[0];
     active = true; touchId = t.identifier; startX = t.clientX; startY = t.clientY;
@@ -558,7 +390,6 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
   }, { passive: false });
   zone.addEventListener("touchend", reset);
   zone.addEventListener("touchcancel", reset);
-
   zone.addEventListener("mousedown", (e) => { active = true; startX = e.clientX; startY = e.clientY; });
   addEventListener("mousemove", (e) => { if (active) move(e.clientX, e.clientY); });
   addEventListener("mouseup", () => { if (active) reset(); });
@@ -592,7 +423,6 @@ function screenToWorld(sx, sy) {
   const cam = getCamera();
   return { x: cam.x + (sx - canvas.width / 2), y: cam.y + (sy - canvas.height / 2) };
 }
-
 function onTapScreen(sx, sy) {
   if (!state || isDead || isPanelOpen) return;
   const w = screenToWorld(sx, sy);
@@ -632,7 +462,6 @@ function closePanel() {
   document.getElementById("panel-overlay").classList.add("hidden");
   isPanelOpen = false;
 }
-
 function panelFeedback(msg) {
   const el = document.getElementById("panel-feedback");
   if (el) el.textContent = msg;
@@ -662,7 +491,7 @@ function openPanel(kind, carKey) {
       const row = document.createElement("div");
       row.className = "item-row";
       const equippable = ["knife", "handgun", "rifle", "shotgun"].includes(k);
-      const rangeTxt = equippable ? ` (برد ${WEAPON_RANGE[k]})` : "";
+      const rangeTxt = equippable ? `(برد ${WEAPON_RANGE[k]})` : "";
       row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
         const b = document.createElement("button");
@@ -780,12 +609,11 @@ function renderCarPanel(title, content, carKey) {
     fuelRow.appendChild(b);
   }
   content.appendChild(fuelRow);
-  if ((state.inventory.corn || 0) > 0 || true) {
-    const hintRow = document.createElement("div");
-    hintRow.className = "item-row";
-    hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
-    content.appendChild(hintRow);
-  }
+
+  const hintRow = document.createElement("div");
+  hintRow.className = "item-row";
+  hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
+  content.appendChild(hintRow);
 
   const rideRow = document.createElement("div");
   rideRow.className = "item-row";
@@ -803,7 +631,6 @@ function renderCarPanel(title, content, carKey) {
   content.appendChild(rideRow);
 }
 
-// وقتی پیاده می‌شی (دستی، بی‌بنزینی، یا خراب شدن ماشین) دقیقاً همینجا پارک می‌مونه
 function exitCar() {
   if (drivingCarKey) {
     const cs = getCarState(drivingCarKey);
@@ -820,7 +647,6 @@ function craft(recipe) {
   panelFeedback(recipe.name + " ساخته شد ✅");
   toast(recipe.name + " ساخته شد ✅");
 }
-
 function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
@@ -828,7 +654,6 @@ function useBandage() {
   panelFeedback("مصرف شد، +۲۵ سلامتی ✅");
   toast("زخم بسته شد، +۲۵ سلامتی");
 }
-
 function consumeItem(k) {
   if ((state.inventory[k] || 0) <= 0) return;
   state.inventory[k] -= 1;
@@ -878,17 +703,12 @@ function nearestResource() {
   }
   return best;
 }
-
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
-  // وقتی سواری، همیشه پنل همون ماشین باز بشه (حتی اگه موقعیت لحظه‌ایش رو گم کرده باشیم)
   if (inCar) { openPanel("car", drivingCarKey || "main"); return; }
-
   if (tryFeedDog()) return;
-
   const car = nearestCar();
   if (car) { openPanel("car", car.key); return; }
-
   const res = nearestResource();
   if (res) {
     const def = RESOURCE_NODES[res.res];
@@ -905,14 +725,12 @@ function doInteract() {
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
-
 function angleDiffDeg(a, b) {
   let d = (a - b) * 180 / Math.PI;
   while (d > 180) d -= 360;
   while (d < -180) d += 360;
   return Math.abs(d);
 }
-
 function performAimedAttack() {
   const range = WEAPON_RANGE[currentWeaponKey()];
   const dmg = WEAPON_DAMAGE[currentWeaponKey()];
@@ -934,7 +752,6 @@ function performAimedAttack() {
     toast("زامبی نابود شد 💀");
   }
 }
-
 // ==================== زامبی‌ها ====================
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
@@ -956,24 +773,16 @@ function spawnZombie() {
 function updateZombies(dt) {
   const now = performance.now();
   if (now - lastZombieSpawn > ZOMBIE_SPAWN_EVERY) { spawnZombie(); lastZombieSpawn = now; }
-
-  // زامبی‌هایی که خیلی از بازیکن دور موندن (جا خوش کردن اونور نقشه) حذف بشن
-  // تا سقف تعداد زامبی خالی بشه و بشه نزدیک بازیکن دوباره اسپاون کرد
   zombies = zombies.filter((z) => Math.hypot(z.x - state.player.x, z.y - state.player.y) < ZOMBIE_DESPAWN_DIST);
 
   for (const z of zombies) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
-
     if (!z.alerted) {
-      if (d <= ZOMBIE_SIGHT_RANGE) {
-        z.alerted = true;
-        z.alertPulseUntil = now + 700;
-      }
+      if (d <= ZOMBIE_SIGHT_RANGE) { z.alerted = true; z.alertPulseUntil = now + 700; }
     } else if (d > ZOMBIE_LOSE_INTEREST) {
       z.alerted = false;
     }
-
     if (z.alerted) {
       z.facing = Math.atan2(dy, dx);
       z.walkPhase += dt * 0.25;
@@ -1007,6 +816,7 @@ function updateZombies(dt) {
 
 // ==================== حرکت و جهت بازیکن ====================
 let playerWalkPhase = 0;
+
 // ==================== سگ همراه ====================
 function tryFeedDog() {
   if (!dog) return false;
@@ -1025,14 +835,12 @@ function tryFeedDog() {
 
 function updateDog(dt) {
   if (!dog) return;
-  if (dog.downed) return; // زخمی و بی‌حرکت، تا غذا نگیره تکون نمی‌خوره
-
+  if (dog.downed) return;
   let target = null, bestD = DOG_DETECT_RANGE;
   for (const z of zombies) {
     const d = Math.hypot(z.x - dog.x, z.y - dog.y);
     if (d < bestD) { bestD = d; target = z; }
   }
-
   let mx = 0, my = 0;
   if (target) {
     const d = Math.hypot(target.x - dog.x, target.y - dog.y) || 1;
@@ -1060,7 +868,6 @@ function updateDog(dt) {
       dog.walkPhase += dt * 0.28;
     }
   }
-
   if (mx || my) {
     dog.x += mx * DOG_SPEED * dt;
     dog.y += my * DOG_SPEED * dt;
@@ -1071,7 +878,6 @@ function updatePlayer(dt) {
   const p = state.player;
   const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
   const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
-
   const speed = (inCar ? PLAYER_SPEED * 3.4 : PLAYER_SPEED) * (state.player.stamina > 0 ? 1 : 0.55);
   if (moving) {
     const dx = joyVec.x * speed * dt, dy = joyVec.y * speed * dt;
@@ -1088,13 +894,11 @@ function updatePlayer(dt) {
   } else if (!inCar) {
     state.player.stamina = Math.min(100, state.player.stamina + dt * 0.14);
   }
-
   if (aiming) {
     playerFacing = Math.atan2(aimVec.y, aimVec.x);
   } else if (moving) {
     playerFacing = Math.atan2(joyVec.y, joyVec.x);
   }
-
   if (aiming) {
     const now = performance.now();
     if (now - lastAttackTime > ATTACK_INTERVAL_MS) {
@@ -1102,18 +906,15 @@ function updatePlayer(dt) {
       performAimedAttack();
     }
   }
-
   p.hunger = Math.max(0, p.hunger - dt * 0.01);
   p.thirst = Math.max(0, p.thirst - dt * 0.015);
   if (p.hunger <= 0 || p.thirst <= 0) p.health = Math.max(0, p.health - dt * 0.03);
   p.health = Math.min(100, p.health);
-
   if (p.health <= 0 && !isDead) onDeath();
 }
 
 // ==================== دوربین و رندر ====================
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
-
 function worldToScreen(wx, wy) {
   const cam = getCamera();
   return { x: canvas.width / 2 + (wx - cam.x), y: canvas.height / 2 + (wy - cam.y) };
@@ -1122,27 +923,21 @@ function worldToScreen(wx, wy) {
 function drawWorld() {
   ctx.fillStyle = "#4a8a3f";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   const cam = getCamera();
   const tilesX = Math.ceil(canvas.width / TILE) + 2;
   const tilesY = Math.ceil(canvas.height / TILE) + 2;
   const centerTX = Math.round(cam.x / TILE), centerTY = Math.round(cam.y / TILE);
-
   for (let dx = -tilesX; dx <= tilesX; dx++) {
     for (let dy = -tilesY; dy <= tilesY; dy++) {
       const tx = centerTX + dx, ty = centerTY + dy;
       const wx = tx * TILE, wy = ty * TILE;
       const s = worldToScreen(wx, wy);
       if (s.x < -TILE || s.x > canvas.width + TILE || s.y < -TILE || s.y > canvas.height + TILE) continue;
-
-      // زمین یکدست سبز با کمی تنوع رنگ ملایم (بدون نقشه‌ی خاکی به‌هم‌ریخته)
       const g = hash2(tx, ty, state.worldSeed + 999);
       ctx.fillStyle = g < 0.15 ? "#4f9345" : (g > 0.9 ? "#457c3c" : "#4a8a3f");
       ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
-
       const key = modKey(tx, ty);
       const mod = state.modifications[key];
-
       if (mod && mod.build) {
         if (mod.build === "wall") {
           if (imgReady(IMG.wall_user)) {
@@ -1163,9 +958,7 @@ function drawWorld() {
         }
         continue;
       }
-
       if (mod && mod.harvested) continue;
-
       const res = tileResource(tx, ty, state.worldSeed);
       if (res) {
         const def = RESOURCE_NODES[res];
@@ -1190,7 +983,7 @@ function drawWorld() {
 function drawCars() {
   const cars = getAllNearbyCars();
   for (const c of cars) {
-    if (inCar && c.key === drivingCarKey) continue; // این ماشین الان زیر پلیره، جدا رسمش نمی‌کنیم
+    if (inCar && c.key === drivingCarKey) continue;
     const s = worldToScreen(c.x, c.y);
     if (s.x < -60 || s.x > canvas.width + 60 || s.y < -60 || s.y > canvas.height + 60) continue;
     const cs = getCarState(c.key);
@@ -1205,7 +998,7 @@ function drawCars() {
       ctx.fillRect(s.x - 20, s.y - 13, 40, 26);
     }
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-    let label = !cs.repaired ? "🔧 موتور خرابه" : `⛽${Math.round(cs.fuel)}% 🔧${Math.round(cs.health)}%`;
+    const label = !cs.repaired ? "🔧 موتور خرابه" : `⛽${Math.round(cs.fuel)}% 🔧${Math.round(cs.health)}%`;
     ctx.fillText(label, s.x, s.y - 32);
   }
 }
@@ -1215,7 +1008,6 @@ function drawZombies() {
   for (const z of zombies) {
     const s = worldToScreen(z.x, z.y);
     const by = s.y;
-
     const sheet = ZOMBIE_SHEETS[z.type] || ZOMBIE_SHEETS.zombie1;
     const frameIdx = z.alerted ? Math.floor(z.walkPhase * 2) % sheet.frames : 0;
     const drawn = drawSpriteFrameRotated(IMG[z.type || "zombie1"], sheet, frameIdx, s.x, by, 34, (z.facing || 0) + Math.PI / 2);
@@ -1230,7 +1022,11 @@ function drawZombies() {
       ctx.textAlign = "center";
       ctx.fillText("❗", s.x, by - 26);
     }
-    ctx.fillStyle = "#111"; ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
+    // نوار سلامت با پس‌زمینه تیره تا روی چمن دیده بشه
+    ctx.fillStyle = "#000";
+    ctx.fillRect(s.x - 14, s.y - 24, 28, 4);
+    ctx.fillStyle = "#e05353";
+    ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
   }
 }
 
@@ -1262,7 +1058,6 @@ function drawWaypoint() {
   const margin = 44;
   const cx = canvas.width / 2, cy = canvas.height / 2;
   const onScreen = s.x > margin && s.x < canvas.width - margin && s.y > margin + 40 && s.y < canvas.height - 90;
-
   if (onScreen) {
     ctx.fillStyle = "#e05353";
     ctx.beginPath(); ctx.arc(s.x, s.y - 18, 8, 0, Math.PI * 2); ctx.fill();
@@ -1295,7 +1090,6 @@ function currentPlayerSheets() {
 function drawPlayer() {
   const s = { x: canvas.width / 2, y: canvas.height / 2 };
   const now = performance.now();
-
   const aiming = Math.hypot(aimVec.x, aimVec.y) > 0.2;
   if (aiming) {
     const range = WEAPON_RANGE[currentWeaponKey()];
@@ -1313,36 +1107,30 @@ function drawPlayer() {
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
-
     const label = document.getElementById("range-label");
     label.textContent = `${ITEM_FA[currentWeaponKey()] || "دست خالی"} — برد ${range}`;
     label.classList.add("show");
   } else {
     document.getElementById("range-label").classList.remove("show");
   }
-
   const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
   let by = s.y;
   if (moving && !inCar) by += Math.sin(playerWalkPhase) * 3;
-
   if (inCar) {
     const drivingCar = getCarState(drivingCarKey || "main");
     const carColor = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main"));
     const carImg = IMG[(carColor && carColor.color) || "engine_orange"];
-    // اسپرایت موتور پیش‌فرض رو به بالاست، پس ۹۰ درجه اضافه می‌کنیم تا با جهت واقعی حرکت یکی بشه
     const drawn = drawImageRotated(carImg, s.x, by, 46, playerFacing + Math.PI / 2);
     if (!drawn) {
       ctx.fillStyle = "#d9a441";
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
     }
-    // پلیر رو سوار بر موتور نشون بده (بدون پا و اسلحه، چون نشسته)
     const idleSheet = PLAYER_SHEETS.unarmed.idle;
     drawSpriteFrameRotated(IMG[idleSheet.key], idleSheet, 0, s.x, by, 22, playerFacing);
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
     ctx.fillText(`⛽${Math.round(drivingCar.fuel)}%`, s.x, by - 34);
     return;
   }
-
   const sheets = currentPlayerSheets();
   const attacking = now < attackPulseUntil && sheets.attack;
   let sheetDef, frameIdx;
@@ -1357,7 +1145,6 @@ function drawPlayer() {
     sheetDef = sheets.idle;
     frameIdx = Math.floor(playerWalkPhase * 2) % sheetDef.frames;
   }
-
   const drawn = drawSpriteFrameRotated(IMG[sheetDef.key], sheetDef, frameIdx, s.x, by, 36, playerFacing + Math.PI / 2);
   if (!drawn) {
     ctx.fillStyle = "#e8c07a";
@@ -1373,13 +1160,11 @@ function loop() {
   const now = performance.now();
   const dt = Math.min(2.2, (now - lastTime) / 16.67);
   lastTime = now;
-
   if (state && !isDead && !isPanelOpen && !isHidden) {
     updatePlayer(dt);
     updateZombies(dt);
     updateDog(dt);
   }
-
   if (state) {
     drawWorld();
     drawCars();
@@ -1388,7 +1173,6 @@ function loop() {
     drawWaypoint();
     drawPlayer();
     updateHUD();
-
     if (!isDead && !isPanelOpen) {
       saveTimer += dt;
       if (saveTimer > 300) { saveTimer = 0; saveState(); }
@@ -1411,13 +1195,11 @@ function updateHUD() {
     await loadState();
     document.getElementById("loading").style.display = "none";
     lastZombieSpawn = performance.now();
-
     if (!state.guideSeen) {
       openPanel("help");
       state.guideSeen = true;
       saveState();
     }
-
     loop();
   } catch (e) {
     const el = document.getElementById("loading");
@@ -1435,6 +1217,6 @@ document.addEventListener("visibilitychange", () => {
     saveState();
   } else {
     isHidden = false;
-    lastTime = performance.now(); // جلوگیری از یه dt غول‌پیکر که باعث پرش ناگهانی بشه
+    lastTime = performance.now();
   }
 });
