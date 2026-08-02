@@ -164,7 +164,6 @@ function drawImageRotated(im, x, y, targetH, angle) {
   return true;
 }
 
-// اسپرایت‌شیت زامبی: ۸ فریم واقعی از چرخه‌ی راه‌رفتن، کنار هم به‌صورت افقی
 const ZOMBIE_SHEETS = {
   zombie1: { frames: 8, w: 66, h: 72 },
   zombie2: { frames: 8, w: 51, h: 72 },
@@ -178,7 +177,6 @@ const DOG_ATTACK_RANGE = 34;
 const DOG_ATTACK_INTERVAL = 650;
 const DOG_DAMAGE = 18;
 
-// اسپرایت‌شیت‌های واقعی بازیکن (پک Top Down Survivor)
 const PLAYER_SHEETS = {
   unarmed: {
     idle: { key: "p_unarmed_idle", frames: 1, w: 29, h: 34 },
@@ -250,7 +248,6 @@ function drawZombieLimbs(x, y, facing, walkPhase) {
   ctx.restore();
 }
 
-// ==================== Telegram WebApp ====================
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (tg) {
   tg.ready();
@@ -266,7 +263,6 @@ try {
 
 const initData = tg ? tg.initData : "";
 
-// ==================== وضعیت بازی ====================
 let state = null;
 let zombies = [];
 let lastZombieSpawn = 0;
@@ -308,7 +304,6 @@ function physicalPointToLocal(px, py) {
   return { x: py, y: w - px };
 }
 
-// ==================== تصادفی قطعی ====================
 function hash2(x, y, seed) {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
   return n - Math.floor(n);
@@ -356,7 +351,163 @@ function moveWithCollision(entity, dx, dy, solidFn) {
     if (!solidFn(tx, ty)) entity.y = ny;
   }
 }
-// ==================== جوی‌استیک ====================
+
+function sectorCarInfo(sx, sy) {
+  const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
+  if (h > CAR_SECTOR_CHANCE) return null;
+  const ox = (hash2(sx + 0.11, sy + 0.22, state.worldSeed + 55) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
+  const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
+  const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
+  return {
+    key: "s_" + sx + "_" + sy,
+    x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox,
+    y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy,
+    color: CAR_COLORS[colorIdx],
+  };
+}
+
+function carInfoFromKey(key) {
+  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" };
+  const m = key.match(/^s_(-?\d+)_(-?\d+)$/);
+  if (!m) return null;
+  return sectorCarInfo(parseInt(m[1], 10), parseInt(m[2], 10));
+}
+
+function getAllNearbyCars() {
+  const map = new Map();
+  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" }];
+  const psx = Math.floor(state.player.x / CAR_SECTOR_SIZE);
+  const psy = Math.floor(state.player.y / CAR_SECTOR_SIZE);
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const info = sectorCarInfo(psx + dx, psy + dy);
+      if (info) base.push(info);
+    }
+  }
+  for (const c of base) map.set(c.key, c);
+  for (const key of Object.keys(state.cars)) {
+    const saved = state.cars[key];
+    if (!saved || saved.posX === undefined) continue;
+    let entry = map.get(key);
+    if (!entry) {
+      entry = carInfoFromKey(key);
+      if (!entry) continue;
+    }
+    map.set(key, { key, x: saved.posX, y: saved.posY, color: entry.color });
+  }
+  return Array.from(map.values());
+}
+
+function getCarState(key) {
+  if (!state.cars[key]) {
+    state.cars[key] = { repaired: false, fuel: 0, health: 100 };
+  }
+  return state.cars[key];
+}
+
+function nearestCar() {
+  const cars = getAllNearbyCars();
+  let best = null, bestD = INTERACT_RANGE + 20;
+  for (const c of cars) {
+    const d = Math.hypot(c.x - state.player.x, c.y - state.player.y);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
+async function loadState() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch("/api/load", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const data = await res.json();
+    if (data.ok) { state = data.state; normalizeState(); return; }
+  } catch (e) {
+    toast("اتصال به سرور برقرار نشد — حالت آزمایشی (ذخیره نمی‌شه)");
+  }
+  state = freshLocalState();
+  normalizeState();
+}
+
+function normalizeState() {
+  if (!state.cars) state.cars = {};
+  if (state.car && !state.cars.main) {
+    state.cars.main = { repaired: !!state.car.repaired, fuel: state.car.fuel || 0, health: state.car.health ?? 100 };
+  }
+  if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
+  if (state.waypoint === undefined) state.waypoint = null;
+  if (!state.dog) state.dog = { health: 100, downed: false };
+  initDog();
+}
+
+function initDog() {
+  dog = {
+    x: state.player.x - 45,
+    y: state.player.y + 10,
+    health: state.dog.health,
+    downed: state.dog.downed,
+    facing: 0,
+    walkPhase: Math.random() * 10,
+    hitFlashUntil: 0,
+  };
+}
+
+function freshLocalState() {
+  return {
+    worldSeed: Math.floor(Math.random() * 100000),
+    player: { x: 0, y: 0, health: 100, hunger: 100, thirst: 100, stamina: 100 },
+    inventory: {}, equipped: null,
+    cars: { main: { repaired: false, fuel: 0, health: 100 } },
+    modifications: {}, guideSeen: false, waypoint: null,
+    dog: { health: 100, downed: false },
+  };
+}
+
+let saveTimer = 0;
+function saveState() {
+  if (!initData || isDead) return;
+  fetch("/api/save", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData, state }),
+  }).catch(() => {});
+}
+
+async function onDeath() {
+  if (isDead) return;
+  isDead = true;
+  zombies = [];
+  placeMode = null;
+  waypointArmed = false;
+  inCar = false;
+  drivingCarKey = null;
+  loadingEl.textContent = "💀 مُردی... دنیای جدیدی در حال ساخته شدنه";
+  loadingEl.style.display = "flex";
+  if (initData) {
+    try {
+      const res = await fetch("/api/reset", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+      });
+      const data = await res.json();
+      state = data.ok ? data.state : freshLocalState();
+      normalizeState();
+    } catch (e) {
+      state = freshLocalState();
+    }
+  } else {
+    state = freshLocalState();
+  }
+  setTimeout(() => {
+    loadingEl.style.display = "none";
+    isDead = false;
+  }, 1600);
+}
+
 function setupStick(zoneId, stickId, onMove, onRelease) {
   const zone = document.getElementById(zoneId);
   const stick = document.getElementById(stickId);
@@ -407,7 +558,6 @@ setupStick("aim-zone", "aim-stick",
   () => { aimVec.x = 0; aimVec.y = 0; }
 );
 
-// ==================== تپ روی صحنه ====================
 canvas.addEventListener("click", (e) => {
   const p = physicalPointToLocal(e.clientX, e.clientY);
   onTapScreen(p.x, p.y);
@@ -423,6 +573,7 @@ function screenToWorld(sx, sy) {
   const cam = getCamera();
   return { x: cam.x + (sx - canvas.width / 2), y: cam.y + (sy - canvas.height / 2) };
 }
+
 function onTapScreen(sx, sy) {
   if (!state || isDead || isPanelOpen) return;
   const w = screenToWorld(sx, sy);
@@ -452,7 +603,6 @@ document.getElementById("btn-gps").addEventListener("click", () => {
   toast(waypointArmed ? "روی نقشه بزن تا نشون بذاری" : "لغو شد");
 });
 
-// ==================== منوها ====================
 document.querySelectorAll("#bottom-menu button").forEach((btn) => {
   btn.addEventListener("click", () => openPanel(btn.dataset.panel));
 });
@@ -462,6 +612,7 @@ function closePanel() {
   document.getElementById("panel-overlay").classList.add("hidden");
   isPanelOpen = false;
 }
+
 function panelFeedback(msg) {
   const el = document.getElementById("panel-feedback");
   if (el) el.textContent = msg;
@@ -541,7 +692,6 @@ function openPanel(kind, carKey) {
   }
 }
 
-// ==================== پنل اختصاصی ماشین ====================
 function renderCarPanel(title, content, carKey) {
   currentCarKey = carKey || "main";
   const car = getCarState(currentCarKey);
@@ -647,6 +797,7 @@ function craft(recipe) {
   panelFeedback(recipe.name + " ساخته شد ✅");
   toast(recipe.name + " ساخته شد ✅");
 }
+
 function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
@@ -654,6 +805,7 @@ function useBandage() {
   panelFeedback("مصرف شد، +۲۵ سلامتی ✅");
   toast("زخم بسته شد، +۲۵ سلامتی");
 }
+
 function consumeItem(k) {
   if ((state.inventory[k] || 0) <= 0) return;
   state.inventory[k] -= 1;
@@ -663,7 +815,6 @@ function consumeItem(k) {
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
 }
 
-// ==================== toast ====================
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -672,7 +823,6 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
 }
 
-// ==================== جاگذاری سازه ====================
 function tryPlace(wx, wy) {
   const tx = Math.round(wx / TILE), ty = Math.round(wy / TILE);
   const dist = Math.hypot(wx - state.player.x, wy - state.player.y);
@@ -686,23 +836,25 @@ function tryPlace(wx, wy) {
   placeMode = null;
 }
 
-// ==================== تعامل نزدیک ====================
 function nearestResource() {
   const px = state.player.x, py = state.player.y;
   const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
   let best = null, bestDist = INTERACT_RANGE;
-  for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) {
-    const tx = ctx0 + dx, ty = cty0 + dy;
-    const key = modKey(tx, ty);
-    if (state.modifications[key] && state.modifications[key].harvested) continue;
-    const res = tileResource(tx, ty, state.worldSeed);
-    if (!res) continue;
-    const wx = tx * TILE, wy = ty * TILE;
-    const d = Math.hypot(wx - px, wy - py);
-    if (d < bestDist) { bestDist = d; best = { tx, ty, res, wx, wy }; }
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const tx = ctx0 + dx, ty = cty0 + dy;
+      const key = modKey(tx, ty);
+      if (state.modifications[key] && state.modifications[key].harvested) continue;
+      const res = tileResource(tx, ty, state.worldSeed);
+      if (!res) continue;
+      const wx = tx * TILE, wy = ty * TILE;
+      const d = Math.hypot(wx - px, wy - py);
+      if (d < bestDist) { bestDist = d; best = { tx, ty, res, wx, wy }; }
+    }
   }
   return best;
 }
+
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
   if (inCar) { openPanel("car", drivingCarKey || "main"); return; }
@@ -721,16 +873,17 @@ function doInteract() {
   toast("چیزی برای تعامل نزدیک نیست");
 }
 
-// ==================== حمله‌ی مبتنی بر جهت ====================
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
+
 function angleDiffDeg(a, b) {
   let d = (a - b) * 180 / Math.PI;
   while (d > 180) d -= 360;
   while (d < -180) d += 360;
   return Math.abs(d);
 }
+
 function performAimedAttack() {
   const range = WEAPON_RANGE[currentWeaponKey()];
   const dmg = WEAPON_DAMAGE[currentWeaponKey()];
@@ -752,7 +905,7 @@ function performAimedAttack() {
     toast("زامبی نابود شد 💀");
   }
 }
-// ==================== زامبی‌ها ====================
+
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
   const ang = Math.random() * Math.PI * 2;
@@ -779,7 +932,10 @@ function updateZombies(dt) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
     if (!z.alerted) {
-      if (d <= ZOMBIE_SIGHT_RANGE) { z.alerted = true; z.alertPulseUntil = now + 700; }
+      if (d <= ZOMBIE_SIGHT_RANGE) {
+        z.alerted = true;
+        z.alertPulseUntil = now + 700;
+      }
     } else if (d > ZOMBIE_LOSE_INTEREST) {
       z.alerted = false;
     }
@@ -814,10 +970,8 @@ function updateZombies(dt) {
   }
 }
 
-// ==================== حرکت و جهت بازیکن ====================
 let playerWalkPhase = 0;
 
-// ==================== سگ همراه ====================
 function tryFeedDog() {
   if (!dog) return false;
   const d = Math.hypot(dog.x - state.player.x, dog.y - state.player.y);
@@ -913,8 +1067,8 @@ function updatePlayer(dt) {
   if (p.health <= 0 && !isDead) onDeath();
 }
 
-// ==================== دوربین و رندر ====================
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
+
 function worldToScreen(wx, wy) {
   const cam = getCamera();
   return { x: canvas.width / 2 + (wx - cam.x), y: canvas.height / 2 + (wy - cam.y) };
@@ -1022,7 +1176,6 @@ function drawZombies() {
       ctx.textAlign = "center";
       ctx.fillText("❗", s.x, by - 26);
     }
-    // نوار سلامت با پس‌زمینه تیره تا روی چمن دیده بشه
     ctx.fillStyle = "#000";
     ctx.fillRect(s.x - 14, s.y - 24, 28, 4);
     ctx.fillStyle = "#e05353";
@@ -1154,7 +1307,6 @@ function drawPlayer() {
   if (now < playerHitFlashUntil) drawHitFlash(s.x, by, 18);
 }
 
-// ==================== حلقه اصلی ====================
 let lastTime = performance.now();
 function loop() {
   const now = performance.now();
@@ -1189,7 +1341,6 @@ function updateHUD() {
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
 }
 
-// ==================== شروع ====================
 (async function init() {
   try {
     await loadState();
