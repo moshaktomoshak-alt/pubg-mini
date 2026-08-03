@@ -1,69 +1,93 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>دنیای بقا</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>دنیای بقا</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="debug.js"></script>
+  <script src="offline-boot.js"></script>
 </head>
 <body>
   <div id="rotate-wrap">
     <canvas id="game"></canvas>
 
-    <!-- HUD بالا -->
     <div id="hud-top">
-      <div class="bar"><div class="bar-label">❤️</div><div class="bar-bg"><div id="bar-health" class="bar-fill health"></div></div></div>
-      <div class="bar"><div class="bar-label">🍗</div><div class="bar-bg"><div id="bar-hunger" class="bar-fill hunger"></div></div></div>
-      <div class="bar"><div class="bar-label">💧</div><div class="bar-bg"><div id="bar-thirst" class="bar-fill thirst"></div></div></div>
-      <div class="bar"><div class="bar-label">⚡</div><div class="bar-bg"><div id="bar-stamina" class="bar-fill stamina"></div></div></div>
       <div id="hud-left-buttons">
-        <button id="btn-help">❓</button>
-        <button id="btn-gps">📍</button>
+        <button id="btn-help" type="button">❓</button>
+        <button id="btn-gps" type="button">📍</button>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">❤️</span>
+        <div class="bar-bg">
+          <div id="bar-health" class="bar-fill health" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">🍗</span>
+        <div class="bar-bg">
+          <div id="bar-hunger" class="bar-fill hunger" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">💧</span>
+        <div class="bar-bg">
+          <div id="bar-thirst" class="bar-fill thirst" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">⚡</span>
+        <div class="bar-bg">
+          <div id="bar-stamina" class="bar-fill stamina" style="width:100%"></div>
+        </div>
       </div>
     </div>
 
     <div id="toast"></div>
     <div id="range-label"></div>
 
-    <!-- جوی‌استیک حرکت (چپ) -->
     <div id="joystick-zone">
-      <div id="joystick-base"><div id="joystick-stick"></div></div>
+      <div id="joystick-base">
+        <div id="joystick-stick"></div>
+      </div>
     </div>
 
-    <!-- جوی‌استیک هدف‌گیری / حمله (راست) -->
     <div id="aim-zone">
-      <div id="aim-base"><div id="aim-stick"></div></div>
+      <div id="aim-base">
+        <div id="aim-stick"></div>
+      </div>
     </div>
 
-    <!-- دکمه تعامل (برداشتن منبع / سوار ماشین) -->
     <div id="action-buttons">
-      <button id="btn-interact">✋</button>
+      <button id="btn-interact" type="button">✋</button>
     </div>
 
-    <!-- منوی پایین (Craft / Build / Item) -->
     <div id="bottom-menu">
-      <button data-panel="inventory">🎒 آیتم</button>
-      <button data-panel="craft">🛠️ ساخت</button>
-      <button data-panel="build">🏠 بنا</button>
+      <button type="button" data-panel="inventory">🎒 آیتم</button>
+      <button type="button" data-panel="craft">🛠️ ساخت</button>
+      <button type="button" data-panel="build">🏠 بنا</button>
     </div>
 
-    <!-- پنل‌ها -->
     <div id="panel-overlay" class="hidden">
       <div id="panel-box">
         <div id="panel-header">
-          <span id="panel-title"></span>
-          <button id="panel-close">✕</button>
+          <div id="panel-title"></div>
+          <button id="panel-close" type="button">✕</button>
         </div>
         <div id="panel-feedback"></div>
         <div id="panel-content"></div>
       </div>
     </div>
 
-    <div id="loading">در حال بارگذاری دنیا ... (نسخه v7)</div>
+    <div id="loading">در حال بارگذاری دنیا ... (نسخه آفلاین)</div>
   </div>
 
-  <script src="dog.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
