@@ -1,0 +1,8 @@
+{
+  "appId": "com.moshaktomoshak.donyayebagha",
+  "appName": "دنیای بقا",
+  "webDir": "static",
+  "server": {
+    "androidScheme": "https"
+  }
+}
