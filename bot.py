@@ -105,8 +105,8 @@ def default_state(user_id: int) -> dict:
             "x": 0, "y": 0,
             "health": 100, "hunger": 100, "thirst": 100, "stamina": 100,
         },
-        "inventory": {},
-        "equipped": None,
+        "inventory": {"knife": 1},
+        "equipped": "knife",
         "cars": {"main": {"repaired": False, "fuel": 0, "health": 100}},
         "modifications": {},   # چانک‌های برداشت‌شده / سازه‌های ساخته‌شده
         "guideSeen": False,
