@@ -1,5 +1,5 @@
-// ==================== نمایش خطای واقعی به‌جای «در حال بارگذاری» بی‌پایان ====================
-window.addEventListener("error", function(e) {
+// ==================== نمایش خطای واقعی ====================
+window.addEventListener("error", function (e) {
   const el = document.getElementById("loading");
   if (el) {
     el.style.display = "flex";
@@ -8,9 +8,7 @@ window.addEventListener("error", function(e) {
     el.textContent = "⚠️ خطا: " + (e.message || "نامشخص") + " (خط " + (e.lineno || "?") + ")";
   }
 });
-
-// ==================== محافظ نهایی: اگه هرچی شد بعد از ۸ ثانیه گیر نکنه ====================
-setTimeout(function() {
+setTimeout(function () {
   const el = document.getElementById("loading");
   if (el && el.style.display !== "none") {
     el.style.fontSize = "13px";
@@ -18,7 +16,6 @@ setTimeout(function() {
     el.textContent = "⚠️ بازی بالا نیومد. اینترنت/فیلترشکن رو چک کن یا دوباره باز کن.";
   }
 }, 8000);
-
 // ==================== تنظیمات پایه ====================
 const TILE = 40;
 const RESOURCE_DENSITY = 0.065;
@@ -39,10 +36,8 @@ const RECIPES = {
     { id: "window", name: "پنجره", need: { wood: 3, metal: 1 }, give: { window: 1 } },
   ],
 };
-
 const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
 const CAR_COLORS = ["engine_blue", "engine_yellow", "engine_green", "engine_black", "engine_orange"];
-
 const RESOURCE_NODES = {
   tree: { gives: "wood", amount: [1, 3], images: ["tree1", "tree2", "tree_user", "wood_small"], drawH: 36, color: "#2e6b1f", radius: 10 },
   rock: { gives: "stone", amount: [1, 2], images: ["rock1", "rock2", "rock3"], drawH: 24, color: "#8a8a8a", radius: 9 },
@@ -52,11 +47,9 @@ const RESOURCE_NODES = {
   well: { gives: "water", amount: [1, 2], color: "#3f7fc7", radius: 7 },
   corn: { gives: "corn", amount: [1, 2], color: "#e8c93a", radius: 7 },
 };
-
 const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5" };
 const SOLID_FOR_ZOMBIE = { wall: true, door: true, window: true };
 const SOLID_FOR_PLAYER = { wall: true };
-
 const ITEM_FA = {
   wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت",
   knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
@@ -64,10 +57,8 @@ const ITEM_FA = {
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
   handgun: "تپانچه", rifle: "تفنگ", shotgun: "شاتگان",
 };
-
 const WEAPON_RANGE = { fists: 45, knife: 60, handgun: 150, rifle: 220, shotgun: 95 };
 const WEAPON_DAMAGE = { fists: 12, knife: 35, handgun: 22, rifle: 30, shotgun: 45 };
-const WEAPON_COLOR = { fists: null, knife: "#d8d8d8" };
 const ATTACK_CONE_DEG = 55;
 const ATTACK_INTERVAL_MS = 550;
 const INTERACT_RANGE = 55;
@@ -82,66 +73,40 @@ const ZOMBIE_SPAWN_EVERY = 7000;
 const CAR_WORLD_X = 0, CAR_WORLD_Y = -260;
 const CAR_SECTOR_SIZE = 640;
 const CAR_SECTOR_CHANCE = 0.35;
-
 const HELP_TEXT_HTML = `
 <div class="help-item">🕹️ <b>آنالوگ چپ:</b> حرکت</div>
 <div class="help-item">🎯 <b>آنالوگ راست (قرمز):</b> نشونه‌گیری و حمله — نگه‌دار تا خودکار بزنه</div>
-<div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک یا تعامل با ماشین</div>
+<div class="help-item">✋ <b>دکمه دست:</b> برداشتن منبع نزدیک، تعامل با ماشین، یا غذا دادن به سگ</div>
+<div class="help-item">🐶 <b>دکمه سگ:</b> تغییر حالت سگ بین حمله ⚔️ و جمع‌آوری منابع 📦</div>
 <div class="help-item">📍 <b>دکمه GPS:</b> یه نشون رو نقشه بذار تا گم نشی؛ دوباره بزن تا حذفش کنی</div>
 <div class="help-item">🌲 <b>منابع:</b> درخت=چوب، سنگ=سنگ، بشکه=فلز، بوته=پارچه، بوته قرمز=غذا، چشمه=آب، ذرت=ذرت (برای بنزین)</div>
 <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
 <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
 <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
 <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
-<div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی/بی‌حرکت شد، با غذا (✋ کنارش) دوباره جون می‌گیره</div>
+<div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی شد، با غذا (✋ کنارش) درمان می‌شه</div>
 <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
 `;
-
 const IMG_SRC = {
-  zombie1: "zombie1_walk.png",
-  zombie2: "zombie2_walk.png",
-  dog: "dog_walk.png",
-  p_unarmed_idle: "p_unarmed_idle.png",
-  p_unarmed_walk: "p_unarmed_walk.png",
-  p_knife_idle: "p_knife_idle.png",
-  p_knife_walk: "p_knife_walk.png",
-  p_knife_attack: "p_knife_attack.png",
-  p_handgun_idle: "p_handgun_idle.png",
-  p_handgun_walk: "p_handgun_walk.png",
-  p_handgun_shoot: "p_handgun_shoot.png",
-  p_rifle_idle: "p_rifle_idle.png",
-  p_rifle_walk: "p_rifle_walk.png",
-  p_rifle_shoot: "p_rifle_shoot.png",
-  p_shotgun_idle: "p_shotgun_idle.png",
-  p_shotgun_walk: "p_shotgun_walk.png",
-  p_shotgun_shoot: "p_shotgun_shoot.png",
-  tree1: "tree1.png",
-  tree2: "tree2.png",
-  rock1: "rock1.png",
-  rock2: "rock2.png",
-  rock3: "rock3.png",
-  tree_user: "tree_user.png",
-  wall_user: "wall_user.png",
-  crate1_user: "crate1_user.png",
-  crate2_user: "crate2_user.png",
-  knife_user: "knife_user.png",
-  wood_small: "wood_small.png",
-  engine_blue: "engine_blue.png",
-  engine_yellow: "engine_yellow.png",
-  engine_green: "engine_green.png",
-  engine_black: "engine_black.png",
-  engine_orange: "engine_orange.png",
+  zombie1: "zombie1_walk.png", zombie2: "zombie2_walk.png",
+  p_unarmed_idle: "p_unarmed_idle.png", p_unarmed_walk: "p_unarmed_walk.png",
+  p_knife_idle: "p_knife_idle.png", p_knife_walk: "p_knife_walk.png", p_knife_attack: "p_knife_attack.png",
+  p_handgun_idle: "p_handgun_idle.png", p_handgun_walk: "p_handgun_walk.png", p_handgun_shoot: "p_handgun_shoot.png",
+  p_rifle_idle: "p_rifle_idle.png", p_rifle_walk: "p_rifle_walk.png", p_rifle_shoot: "p_rifle_shoot.png",
+  p_shotgun_idle: "p_shotgun_idle.png", p_shotgun_walk: "p_shotgun_walk.png", p_shotgun_shoot: "p_shotgun_shoot.png",
+  tree1: "tree1.png", tree2: "tree2.png", rock1: "rock1.png", rock2: "rock2.png", rock3: "rock3.png",
+  tree_user: "tree_user.png", wall_user: "wall_user.png", crate1_user: "crate1_user.png", crate2_user: "crate2_user.png",
+  knife_user: "knife_user.png", wood_small: "wood_small.png",
+  engine_blue: "engine_blue.png", engine_yellow: "engine_yellow.png", engine_green: "engine_green.png",
+  engine_black: "engine_black.png", engine_orange: "engine_orange.png",
 };
-
 const IMG = {};
 for (const [key, src] of Object.entries(IMG_SRC)) {
   const im = new Image();
   im.src = src;
   IMG[key] = im;
 }
-
 function imgReady(im) { return im && im.complete && im.naturalWidth > 0; }
-
 function drawImageCentered(im, x, y, targetH) {
   if (!imgReady(im)) return false;
   const scale = targetH / im.naturalHeight;
@@ -150,7 +115,6 @@ function drawImageCentered(im, x, y, targetH) {
   ctx.drawImage(im, x - w / 2, y - h / 2, w, h);
   return true;
 }
-
 function drawImageRotated(im, x, y, targetH, angle) {
   if (!imgReady(im)) return false;
   const scale = targetH / im.naturalHeight;
@@ -163,20 +127,10 @@ function drawImageRotated(im, x, y, targetH, angle) {
   ctx.restore();
   return true;
 }
-
 const ZOMBIE_SHEETS = {
   zombie1: { frames: 8, w: 66, h: 72 },
   zombie2: { frames: 8, w: 51, h: 72 },
 };
-
-const DOG_SHEET = { frames: 6, w: 141, h: 60 };
-const DOG_SPEED = 3.1;
-const DOG_FOLLOW_DIST = 55;
-const DOG_DETECT_RANGE = 180;
-const DOG_ATTACK_RANGE = 34;
-const DOG_ATTACK_INTERVAL = 650;
-const DOG_DAMAGE = 18;
-
 const PLAYER_SHEETS = {
   unarmed: {
     idle: { key: "p_unarmed_idle", frames: 1, w: 29, h: 34 },
@@ -204,26 +158,34 @@ const PLAYER_SHEETS = {
     attack: { key: "p_shotgun_shoot", frames: 3, w: 56, h: 34 },
   },
 };
-
-const WEAPON_TO_SHEET_CATEGORY = {
-  fists: "unarmed",
-  knife: "knife", handgun: "handgun", rifle: "rifle", shotgun: "shotgun",
-};
-
+const WEAPON_TO_SHEET_CATEGORY = { fists: "unarmed", knife: "knife", handgun: "handgun", rifle: "rifle", shotgun: "shotgun" };
 const ATTACK_ANIM_MS = 260;
-
+// ==================== رسم اسپرایت هوشمند (هر ابعادی رو درست می‌کشه) ====================
 function drawSpriteFrameRotated(im, sheet, frameIndex, x, y, targetH, angle) {
   if (!imgReady(im)) return false;
-  const scale = targetH / sheet.h;
-  const dw = sheet.w * scale, dh = sheet.h * scale;
+  const iw = im.naturalWidth, ih = im.naturalHeight;
+  const rawScale = ih / sheet.h;
+  const scale = (rawScale > 1.4 || rawScale < 0.7) ? rawScale : 1;
+  const fw = sheet.w * scale, fh = sheet.h * scale;
+  const framesX = Math.max(1, Math.round(iw / fw));
+  const isSheet = framesX > 1 && Math.abs(ih - fh) <= fh * 0.35;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-  ctx.drawImage(im, frameIndex * sheet.w, 0, sheet.w, sheet.h, -dw / 2, -dh / 2, dw, dh);
+  if (isSheet) {
+    const fi = ((Math.floor(frameIndex) % framesX) + framesX) % framesX;
+    const realFW = iw / framesX;
+    const k = targetH / ih;
+    const dw = realFW * k, dh = ih * k;
+    ctx.drawImage(im, fi * realFW, 0, realFW, ih, -dw / 2, -dh / 2, dw, dh);
+  } else {
+    const k = targetH / ih;
+    const dw = iw * k, dh = ih * k;
+    ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+  }
   ctx.restore();
   return true;
 }
-
 function drawHitFlash(x, y, radius) {
   ctx.save();
   ctx.globalAlpha = 0.5;
@@ -233,36 +195,18 @@ function drawHitFlash(x, y, radius) {
   ctx.fill();
   ctx.restore();
 }
-
-function drawZombieLimbs(x, y, facing, walkPhase) {
-  const stride = Math.sin(walkPhase) * 4;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(facing);
-  ctx.fillStyle = "#2f5d33";
-  ctx.fillRect(-10 + stride * 0.5, -6, 7, 5);
-  ctx.fillRect(-10 - stride * 0.5, 1, 7, 5);
-  ctx.fillStyle = "#4a7a4e";
-  ctx.beginPath(); ctx.arc(11, -6, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(11, 6, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (tg) {
   tg.ready();
   tg.expand();
   try { if (tg.lockOrientation) tg.lockOrientation(); } catch (e) {}
 }
-
 try {
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock("landscape").catch(() => {});
   }
 } catch (e) {}
-
 const initData = tg ? tg.initData : "";
-
 let state = null;
 let zombies = [];
 let lastZombieSpawn = 0;
@@ -274,41 +218,32 @@ let drivingCarKey = null;
 let isDead = false;
 let isPanelOpen = false;
 let isHidden = false;
-let dog = null;
-let lastDogAttack = 0;
 let playerFacing = Math.PI / 2;
 let lastAttackTime = 0;
 let playerHitFlashUntil = 0;
 let attackPulseUntil = 0;
-
 const canvas = document.getElementById("game");
 const loadingEl = document.getElementById("loading");
 const ctx = canvas.getContext("2d");
 const rotateWrap = document.getElementById("rotate-wrap");
-
 function resize() { canvas.width = rotateWrap.clientWidth; canvas.height = rotateWrap.clientHeight; }
 addEventListener("resize", resize);
 addEventListener("orientationchange", resize);
 resize();
-
 function isForcedPortrait() { return window.innerWidth < window.innerHeight; }
-
 function physicalDeltaToLocal(dpx, dpy) {
   if (!isForcedPortrait()) return { x: dpx, y: dpy };
   return { x: dpy, y: -dpx };
 }
-
 function physicalPointToLocal(px, py) {
   if (!isForcedPortrait()) return { x: px, y: py };
   const w = window.innerWidth;
   return { x: py, y: w - px };
 }
-
 function hash2(x, y, seed) {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
   return n - Math.floor(n);
 }
-
 function tileResource(tx, ty, seed) {
   const h = hash2(tx, ty, seed);
   if (h > RESOURCE_DENSITY) return null;
@@ -316,29 +251,23 @@ function tileResource(tx, ty, seed) {
   const idx = Math.floor(hash2(tx + 0.37, ty + 0.71, seed) * keys.length);
   return keys[idx];
 }
-
 function pickVariant(list, tx, ty, seed) {
   const idx = Math.floor(hash2(tx + 5.13, ty + 9.77, seed) * list.length);
   return list[Math.min(idx, list.length - 1)];
 }
-
 function modKey(tx, ty) { return tx + "_" + ty; }
-
 function buildAt(tx, ty) {
   const m = state.modifications[modKey(tx, ty)];
   return m && m.build ? m.build : null;
 }
-
 function isSolidForPlayer(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_PLAYER[b]);
 }
-
 function isSolidForZombie(tx, ty) {
   const b = buildAt(tx, ty);
   return !!(b && SOLID_FOR_ZOMBIE[b]);
 }
-
 function moveWithCollision(entity, dx, dy, solidFn) {
   if (dx !== 0) {
     const nx = entity.x + dx;
@@ -351,28 +280,20 @@ function moveWithCollision(entity, dx, dy, solidFn) {
     if (!solidFn(tx, ty)) entity.y = ny;
   }
 }
-
 function sectorCarInfo(sx, sy) {
   const h = hash2(sx * 3.1 + 0.5, sy * 2.7 + 0.5, state.worldSeed + 4242);
   if (h > CAR_SECTOR_CHANCE) return null;
   const ox = (hash2(sx + 0.11, sy + 0.22, state.worldSeed + 55) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
   const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
   const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
-  return {
-    key: "s_" + sx + "_" + sy,
-    x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox,
-    y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy,
-    color: CAR_COLORS[colorIdx],
-  };
+  return { key: "s_" + sx + "_" + sy, x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox, y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy, color: CAR_COLORS[colorIdx] };
 }
-
 function carInfoFromKey(key) {
   if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" };
   const m = key.match(/^s_(-?\d+)_(-?\d+)$/);
   if (!m) return null;
   return sectorCarInfo(parseInt(m[1], 10), parseInt(m[2], 10));
 }
-
 function getAllNearbyCars() {
   const map = new Map();
   const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" }];
@@ -397,14 +318,10 @@ function getAllNearbyCars() {
   }
   return Array.from(map.values());
 }
-
 function getCarState(key) {
-  if (!state.cars[key]) {
-    state.cars[key] = { repaired: false, fuel: 0, health: 100 };
-  }
+  if (!state.cars[key]) state.cars[key] = { repaired: false, fuel: 0, health: 100 };
   return state.cars[key];
 }
-
 function nearestCar() {
   const cars = getAllNearbyCars();
   let best = null, bestD = INTERACT_RANGE + 20;
@@ -414,7 +331,6 @@ function nearestCar() {
   }
   return best;
 }
-
 async function loadState() {
   try {
     const controller = new AbortController();
@@ -427,13 +343,10 @@ async function loadState() {
     clearTimeout(timeoutId);
     const data = await res.json();
     if (data.ok) { state = data.state; normalizeState(); return; }
-  } catch (e) {
-    toast("اتصال به سرور برقرار نشد — حالت آزمایشی (ذخیره نمی‌شه)");
-  }
+  } catch (e) {}
   state = freshLocalState();
   normalizeState();
 }
-
 function normalizeState() {
   if (!state.cars) state.cars = {};
   if (state.car && !state.cars.main) {
@@ -442,21 +355,18 @@ function normalizeState() {
   if (!state.cars.main) state.cars.main = { repaired: false, fuel: 0, health: 100 };
   if (state.waypoint === undefined) state.waypoint = null;
   if (!state.dog) state.dog = { health: 100, downed: false };
-  initDog();
 }
-
-function initDog() {
-  dog = {
-    x: state.player.x - 45,
-    y: state.player.y + 10,
-    health: state.dog.health,
-    downed: state.dog.downed,
-    facing: 0,
-    walkPhase: Math.random() * 10,
-    hitFlashUntil: 0,
-  };
+// ==================== سگ: همه‌چیز از dog.js خونده می‌شه ====================
+function ensureDog() {
+  if (typeof initDog !== "function") return;
+  if (!dog) {
+    initDog();
+    if (state.dog) {
+      dog.hp = typeof state.dog.health === "number" ? state.dog.health : 100;
+      dog.isDowned = !!state.dog.downed;
+    }
+  }
 }
-
 function freshLocalState() {
   return {
     worldSeed: Math.floor(Math.random() * 100000),
@@ -467,16 +377,15 @@ function freshLocalState() {
     dog: { health: 100, downed: false },
   };
 }
-
 let saveTimer = 0;
 function saveState() {
   if (!initData || isDead) return;
+  if (dog) state.dog = { health: dog.hp, downed: dog.isDowned };
   fetch("/api/save", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData, state }),
   }).catch(() => {});
 }
-
 async function onDeath() {
   if (isDead) return;
   isDead = true;
@@ -485,6 +394,7 @@ async function onDeath() {
   waypointArmed = false;
   inCar = false;
   drivingCarKey = null;
+  dog = null;
   loadingEl.textContent = "💀 مُردی... دنیای جدیدی در حال ساخته شدنه";
   loadingEl.style.display = "flex";
   if (initData) {
@@ -498,22 +408,22 @@ async function onDeath() {
       normalizeState();
     } catch (e) {
       state = freshLocalState();
+      normalizeState();
     }
   } else {
     state = freshLocalState();
+    normalizeState();
   }
   setTimeout(() => {
     loadingEl.style.display = "none";
     isDead = false;
   }, 1600);
 }
-
 function setupStick(zoneId, stickId, onMove, onRelease) {
   const zone = document.getElementById(zoneId);
   const stick = document.getElementById(stickId);
   let active = false, startX = 0, startY = 0, touchId = null;
   const MAX = 31;
-
   function move(clientX, clientY) {
     const raw = physicalDeltaToLocal(clientX - startX, clientY - startY);
     let dx = raw.x, dy = raw.y;
@@ -528,7 +438,6 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
     stick.style.left = "31px"; stick.style.top = "31px";
     onRelease();
   }
-
   zone.addEventListener("touchstart", (e) => {
     const t = e.changedTouches[0];
     active = true; touchId = t.identifier; startX = t.clientX; startY = t.clientY;
@@ -545,19 +454,16 @@ function setupStick(zoneId, stickId, onMove, onRelease) {
   addEventListener("mousemove", (e) => { if (active) move(e.clientX, e.clientY); });
   addEventListener("mouseup", () => { if (active) reset(); });
 }
-
 let joyVec = { x: 0, y: 0 };
 setupStick("joystick-zone", "joystick-stick",
   (x, y) => { joyVec.x = x; joyVec.y = y; },
   () => { joyVec.x = 0; joyVec.y = 0; }
 );
-
 let aimVec = { x: 0, y: 0 };
 setupStick("aim-zone", "aim-stick",
   (x, y) => { aimVec.x = x; aimVec.y = y; },
   () => { aimVec.x = 0; aimVec.y = 0; }
 );
-
 canvas.addEventListener("click", (e) => {
   const p = physicalPointToLocal(e.clientX, e.clientY);
   onTapScreen(p.x, p.y);
@@ -568,12 +474,10 @@ canvas.addEventListener("touchstart", (e) => {
   const p = physicalPointToLocal(t.clientX, t.clientY);
   onTapScreen(p.x, p.y);
 }, { passive: true });
-
 function screenToWorld(sx, sy) {
   const cam = getCamera();
   return { x: cam.x + (sx - canvas.width / 2), y: cam.y + (sy - canvas.height / 2) };
 }
-
 function onTapScreen(sx, sy) {
   if (!state || isDead || isPanelOpen) return;
   const w = screenToWorld(sx, sy);
@@ -586,7 +490,6 @@ function onTapScreen(sx, sy) {
   }
   if (placeMode) { tryPlace(w.x, w.y); return; }
 }
-
 document.getElementById("btn-interact").addEventListener("click", doInteract);
 document.getElementById("btn-help").addEventListener("click", () => openPanel("help"));
 document.getElementById("btn-gps").addEventListener("click", () => {
@@ -602,22 +505,18 @@ document.getElementById("btn-gps").addEventListener("click", () => {
   document.getElementById("btn-gps").classList.toggle("active", waypointArmed);
   toast(waypointArmed ? "روی نقشه بزن تا نشون بذاری" : "لغو شد");
 });
-
 document.querySelectorAll("#bottom-menu button").forEach((btn) => {
   btn.addEventListener("click", () => openPanel(btn.dataset.panel));
 });
 document.getElementById("panel-close").addEventListener("click", closePanel);
-
 function closePanel() {
   document.getElementById("panel-overlay").classList.add("hidden");
   isPanelOpen = false;
 }
-
 function panelFeedback(msg) {
   const el = document.getElementById("panel-feedback");
   if (el) el.textContent = msg;
 }
-
 function openPanel(kind, carKey) {
   if (isDead) return;
   const overlay = document.getElementById("panel-overlay");
@@ -627,7 +526,6 @@ function openPanel(kind, carKey) {
   panelFeedback("");
   overlay.classList.remove("hidden");
   isPanelOpen = true;
-
   if (kind === "help") {
     title.textContent = "📖 راهنما";
     content.innerHTML = HELP_TEXT_HTML;
@@ -642,7 +540,7 @@ function openPanel(kind, carKey) {
       const row = document.createElement("div");
       row.className = "item-row";
       const equippable = ["knife", "handgun", "rifle", "shotgun"].includes(k);
-      const rangeTxt = equippable ? `(برد ${WEAPON_RANGE[k]})` : "";
+      const rangeTxt = equippable ? ` (برد ${WEAPON_RANGE[k]})` : "";
       row.innerHTML = `<span class="name">${ITEM_FA[k] || k}${rangeTxt} ×${inv[k]}</span>`;
       if (equippable) {
         const b = document.createElement("button");
@@ -691,12 +589,10 @@ function openPanel(kind, carKey) {
     }
   }
 }
-
 function renderCarPanel(title, content, carKey) {
   currentCarKey = carKey || "main";
   const car = getCarState(currentCarKey);
   title.textContent = "🚗 ماشین";
-
   if (!car.repaired) {
     const row = document.createElement("div");
     row.className = "item-row";
@@ -721,7 +617,6 @@ function renderCarPanel(title, content, carKey) {
     content.appendChild(row);
     return;
   }
-
   const healthRow = document.createElement("div");
   healthRow.className = "item-row";
   healthRow.innerHTML = `<span class="name">🔧 سلامت بدنه: ${Math.round(car.health)}٪</span>`;
@@ -740,7 +635,6 @@ function renderCarPanel(title, content, carKey) {
     healthRow.appendChild(b);
   }
   content.appendChild(healthRow);
-
   const fuelRow = document.createElement("div");
   fuelRow.className = "item-row";
   fuelRow.innerHTML = `<span class="name">⛽ بنزین: ${Math.round(car.fuel)}٪</span>`;
@@ -759,12 +653,10 @@ function renderCarPanel(title, content, carKey) {
     fuelRow.appendChild(b);
   }
   content.appendChild(fuelRow);
-
   const hintRow = document.createElement("div");
   hintRow.className = "item-row";
   hintRow.innerHTML = `<span class="name" style="font-size:11px;color:#aaa">قوطی بنزین نداری؟ تو منوی «ساخت» با ۴ ذرت یه قوطی بساز 🌽</span>`;
   content.appendChild(hintRow);
-
   const rideRow = document.createElement("div");
   rideRow.className = "item-row";
   rideRow.innerHTML = `<span class="name">${inCar && currentCarKey === carKey ? "سوار ماشینی" : "کنار ماشینی"}</span>`;
@@ -780,7 +672,6 @@ function renderCarPanel(title, content, carKey) {
   rideRow.appendChild(rb);
   content.appendChild(rideRow);
 }
-
 function exitCar() {
   if (drivingCarKey) {
     const cs = getCarState(drivingCarKey);
@@ -790,14 +681,12 @@ function exitCar() {
   inCar = false;
   drivingCarKey = null;
 }
-
 function craft(recipe) {
   for (const [k, v] of Object.entries(recipe.need)) state.inventory[k] -= v;
   for (const [k, v] of Object.entries(recipe.give)) state.inventory[k] = (state.inventory[k] || 0) + v;
   panelFeedback(recipe.name + " ساخته شد ✅");
   toast(recipe.name + " ساخته شد ✅");
 }
-
 function useBandage() {
   if ((state.inventory.bandage || 0) <= 0) return;
   state.inventory.bandage -= 1;
@@ -805,7 +694,6 @@ function useBandage() {
   panelFeedback("مصرف شد، +۲۵ سلامتی ✅");
   toast("زخم بسته شد، +۲۵ سلامتی");
 }
-
 function consumeItem(k) {
   if ((state.inventory[k] || 0) <= 0) return;
   state.inventory[k] -= 1;
@@ -814,7 +702,6 @@ function consumeItem(k) {
   panelFeedback(ITEM_FA[k] + " مصرف شد ✅");
   toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
 }
-
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -822,7 +709,6 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
 }
-
 function tryPlace(wx, wy) {
   const tx = Math.round(wx / TILE), ty = Math.round(wy / TILE);
   const dist = Math.hypot(wx - state.player.x, wy - state.player.y);
@@ -835,7 +721,6 @@ function tryPlace(wx, wy) {
   toast(ITEM_FA[placeMode] + " ساخته شد 🏗️");
   placeMode = null;
 }
-
 function nearestResource() {
   const px = state.player.x, py = state.player.y;
   const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
@@ -854,7 +739,20 @@ function nearestResource() {
   }
   return best;
 }
-
+// ==================== تعامل با سگ (از تابع‌های خود dog.js استفاده می‌کنه) ====================
+function tryFeedDog() {
+  if (!dog) return false;
+  const d = Math.hypot(dog.x - state.player.x, dog.y - state.player.y);
+  if (d > INTERACT_RANGE) return false;
+  if (dog.isDowned) {
+    reviveDog();
+  } else if (dog.hp < 100) {
+    healDog("food");
+  } else {
+    toast("سگت حالش خوبه 🐶");
+  }
+  return true;
+}
 function doInteract() {
   if (!state || isDead || isPanelOpen) return;
   if (inCar) { openPanel("car", drivingCarKey || "main"); return; }
@@ -872,18 +770,15 @@ function doInteract() {
   }
   toast("چیزی برای تعامل نزدیک نیست");
 }
-
 function currentWeaponKey() {
   return state.equipped && WEAPON_RANGE[state.equipped] ? state.equipped : "fists";
 }
-
 function angleDiffDeg(a, b) {
   let d = (a - b) * 180 / Math.PI;
   while (d > 180) d -= 360;
   while (d < -180) d += 360;
   return Math.abs(d);
 }
-
 function performAimedAttack() {
   const range = WEAPON_RANGE[currentWeaponKey()];
   const dmg = WEAPON_DAMAGE[currentWeaponKey()];
@@ -905,7 +800,6 @@ function performAimedAttack() {
     toast("زامبی نابود شد 💀");
   }
 }
-
 function spawnZombie() {
   if (zombies.length >= ZOMBIE_MAX) return;
   const ang = Math.random() * Math.PI * 2;
@@ -922,12 +816,10 @@ function spawnZombie() {
     type: Math.random() < 0.5 ? "zombie1" : "zombie2",
   });
 }
-
 function updateZombies(dt) {
   const now = performance.now();
   if (now - lastZombieSpawn > ZOMBIE_SPAWN_EVERY) { spawnZombie(); lastZombieSpawn = now; }
   zombies = zombies.filter((z) => Math.hypot(z.x - state.player.x, z.y - state.player.y) < ZOMBIE_DESPAWN_DIST);
-
   for (const z of zombies) {
     const dx = state.player.x - z.x, dy = state.player.y - z.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -957,77 +849,22 @@ function updateZombies(dt) {
           playerHitFlashUntil = now + 200;
         }
       }
-      if (dog && !dog.downed) {
+      if (dog && !dog.isDowned) {
         const dd = Math.hypot(dog.x - z.x, dog.y - z.y);
         if (dd < 24) {
-          dog.health = Math.max(0, dog.health - ZOMBIE_DAMAGE * dt * 0.06);
+          dog.hp -= ZOMBIE_DAMAGE * dt * 0.08;
           dog.hitFlashUntil = now + 200;
-          if (dog.health <= 0) { dog.downed = true; toast("سگت زخمی شد! باهاش غذا بده تا جون بگیره 🐶"); }
-          if (state.dog) { state.dog.health = dog.health; state.dog.downed = dog.downed; }
+          if (dog.hp <= 0) {
+            dog.hp = 0;
+            dog.isDowned = true;
+            toast("سگت زخمی شد! با غذا درمانش کن 🐶💔");
+          }
         }
       }
     }
   }
 }
-
 let playerWalkPhase = 0;
-
-function tryFeedDog() {
-  if (!dog) return false;
-  const d = Math.hypot(dog.x - state.player.x, dog.y - state.player.y);
-  if (d > INTERACT_RANGE) return false;
-  if (!dog.downed && dog.health >= 100) { toast("سگت حالش خوبه 🐶"); return true; }
-  if ((state.inventory.food || 0) <= 0) { toast("برای غذا دادن به سگ، غذا نداری 🍗"); return true; }
-  state.inventory.food -= 1;
-  dog.health = 100;
-  dog.downed = false;
-  state.dog.health = 100;
-  state.dog.downed = false;
-  toast("سگ غذا خورد و جون گرفت 🐶❤️");
-  return true;
-}
-
-function updateDog(dt) {
-  if (!dog) return;
-  if (dog.downed) return;
-  let target = null, bestD = DOG_DETECT_RANGE;
-  for (const z of zombies) {
-    const d = Math.hypot(z.x - dog.x, z.y - dog.y);
-    if (d < bestD) { bestD = d; target = z; }
-  }
-  let mx = 0, my = 0;
-  if (target) {
-    const d = Math.hypot(target.x - dog.x, target.y - dog.y) || 1;
-    dog.facing = Math.atan2(target.y - dog.y, target.x - dog.x);
-    if (d > DOG_ATTACK_RANGE) {
-      mx = (target.x - dog.x) / d; my = (target.y - dog.y) / d;
-      dog.walkPhase += dt * 0.3;
-    } else {
-      const now = performance.now();
-      if (now - lastDogAttack > DOG_ATTACK_INTERVAL) {
-        lastDogAttack = now;
-        target.hp -= DOG_DAMAGE;
-        target.hitFlashUntil = now + 200;
-        if (target.hp <= 0) {
-          zombies = zombies.filter((z) => z !== target);
-          toast("سگت یه زامبی رو زد 🐶💥");
-        }
-      }
-    }
-  } else {
-    const dp = Math.hypot(state.player.x - dog.x, state.player.y - dog.y);
-    if (dp > DOG_FOLLOW_DIST) {
-      mx = (state.player.x - dog.x) / dp; my = (state.player.y - dog.y) / dp;
-      dog.facing = Math.atan2(my, mx);
-      dog.walkPhase += dt * 0.28;
-    }
-  }
-  if (mx || my) {
-    dog.x += mx * DOG_SPEED * dt;
-    dog.y += my * DOG_SPEED * dt;
-  }
-}
-
 function updatePlayer(dt) {
   const p = state.player;
   const moving = Math.hypot(joyVec.x, joyVec.y) > 0.15;
@@ -1066,14 +903,11 @@ function updatePlayer(dt) {
   p.health = Math.min(100, p.health);
   if (p.health <= 0 && !isDead) onDeath();
 }
-
 function getCamera() { return { x: state.player.x, y: state.player.y }; }
-
 function worldToScreen(wx, wy) {
   const cam = getCamera();
   return { x: canvas.width / 2 + (wx - cam.x), y: canvas.height / 2 + (wy - cam.y) };
 }
-
 function drawWorld() {
   ctx.fillStyle = "#4a8a3f";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1133,7 +967,6 @@ function drawWorld() {
     }
   }
 }
-
 function drawCars() {
   const cars = getAllNearbyCars();
   for (const c of cars) {
@@ -1156,7 +989,6 @@ function drawCars() {
     ctx.fillText(label, s.x, s.y - 32);
   }
 }
-
 function drawZombies() {
   const now = performance.now();
   for (const z of zombies) {
@@ -1182,27 +1014,6 @@ function drawZombies() {
     ctx.fillRect(s.x - 14, s.y - 24, 28 * (z.hp / 60), 4);
   }
 }
-
-function drawDog() {
-  if (!dog) return;
-  const now = performance.now();
-  const s = worldToScreen(dog.x, dog.y);
-  const frameIdx = dog.downed ? 0 : Math.floor(dog.walkPhase * 2) % DOG_SHEET.frames;
-  const angle = dog.downed ? Math.PI / 2 : (dog.facing || 0) + Math.PI / 2;
-  const drawn = drawSpriteFrameRotated(IMG.dog, DOG_SHEET, frameIdx, s.x, s.y, dog.downed ? 22 : 26, angle);
-  if (!drawn) {
-    ctx.fillStyle = dog.downed ? "#8a8a8a" : "#c9a15a";
-    ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, Math.PI * 2); ctx.fill();
-  }
-  if (now < dog.hitFlashUntil) drawHitFlash(s.x, s.y, 14);
-  if (dog.downed) {
-    ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
-    ctx.fillText("زخمی 🩹", s.x, s.y - 22);
-  } else if (dog.health < 100) {
-    ctx.fillStyle = "#111"; ctx.fillRect(s.x - 12, s.y - 20, 24 * (dog.health / 100), 3);
-  }
-}
-
 function drawWaypoint() {
   if (!state.waypoint) return;
   const wp = state.waypoint;
@@ -1234,12 +1045,10 @@ function drawWaypoint() {
     ctx.fillText(dist + "m", ex, ey - 14);
   }
 }
-
 function currentPlayerSheets() {
   const cat = WEAPON_TO_SHEET_CATEGORY[currentWeaponKey()] || "unarmed";
   return PLAYER_SHEETS[cat];
 }
-
 function drawPlayer() {
   const s = { x: canvas.width / 2, y: canvas.height / 2 };
   const now = performance.now();
@@ -1306,21 +1115,21 @@ function drawPlayer() {
   }
   if (now < playerHitFlashUntil) drawHitFlash(s.x, by, 18);
 }
-
 let lastTime = performance.now();
 function loop() {
   const now = performance.now();
   const dt = Math.min(2.2, (now - lastTime) / 16.67);
   lastTime = now;
+  ensureDog();
   if (state && !isDead && !isPanelOpen && !isHidden) {
     updatePlayer(dt);
     updateZombies(dt);
-    updateDog(dt);
+    if (typeof updateDog === "function") updateDog(dt);
   }
   if (state) {
     drawWorld();
     drawCars();
-    drawDog();
+    if (typeof drawDog === "function") drawDog();
     drawZombies();
     drawWaypoint();
     drawPlayer();
@@ -1332,7 +1141,6 @@ function loop() {
   }
   requestAnimationFrame(loop);
 }
-
 function updateHUD() {
   const p = state.player;
   document.getElementById("bar-health").style.width = Math.max(0, p.health) + "%";
@@ -1340,7 +1148,6 @@ function updateHUD() {
   document.getElementById("bar-thirst").style.width = p.thirst + "%";
   document.getElementById("bar-stamina").style.width = p.stamina + "%";
 }
-
 (async function init() {
   try {
     await loadState();
@@ -1360,7 +1167,6 @@ function updateHUD() {
     el.textContent = "⚠️ خطا موقع شروع: " + (e && e.message ? e.message : e);
   }
 })();
-
 addEventListener("blur", saveState);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
