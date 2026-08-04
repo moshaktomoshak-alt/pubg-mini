@@ -4,9 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>دنیای بقا</title>
-
   <link rel="stylesheet" href="style.css" />
-
   <script src="debug.js"></script>
   <script src="offline-boot.js"></script>
 </head>
@@ -19,52 +17,20 @@
         <button id="btn-help" type="button">❓</button>
         <button id="btn-gps" type="button">📍</button>
       </div>
-
-      <div class="bar">
-        <span class="bar-label">❤️</span>
-        <div class="bar-bg">
-          <div id="bar-health" class="bar-fill health" style="width:100%"></div>
-        </div>
-      </div>
-
-      <div class="bar">
-        <span class="bar-label">🍗</span>
-        <div class="bar-bg">
-          <div id="bar-hunger" class="bar-fill hunger" style="width:100%"></div>
-        </div>
-      </div>
-
-      <div class="bar">
-        <span class="bar-label">💧</span>
-        <div class="bar-bg">
-          <div id="bar-thirst" class="bar-fill thirst" style="width:100%"></div>
-        </div>
-      </div>
-
-      <div class="bar">
-        <span class="bar-label">⚡</span>
-        <div class="bar-bg">
-          <div id="bar-stamina" class="bar-fill stamina" style="width:100%"></div>
-        </div>
-      </div>
+      <div class="bar"><span class="bar-label">❤️</span><div class="bar-bg"><div id="bar-health" class="bar-fill health" style="width:100%"></div></div></div>
+      <div class="bar"><span class="bar-label">🍗</span><div class="bar-bg"><div id="bar-hunger" class="bar-fill hunger" style="width:100%"></div></div></div>
+      <div class="bar"><span class="bar-label">💧</span><div class="bar-bg"><div id="bar-thirst" class="bar-fill thirst" style="width:100%"></div></div></div>
+      <div class="bar"><span class="bar-label">⚡</span><div class="bar-bg"><div id="bar-stamina" class="bar-fill stamina" style="width:100%"></div></div></div>
     </div>
 
     <div id="toast"></div>
     <div id="range-label"></div>
 
-    <div id="joystick-zone">
-      <div id="joystick-base">
-        <div id="joystick-stick"></div>
-      </div>
-    </div>
-
-    <div id="aim-zone">
-      <div id="aim-base">
-        <div id="aim-stick"></div>
-      </div>
-    </div>
+    <div id="joystick-zone"><div id="joystick-base"><div id="joystick-stick"></div></div></div>
+    <div id="aim-zone"><div id="aim-base"><div id="aim-stick"></div></div></div>
 
     <div id="action-buttons">
+      <button id="btn-dog" type="button">🐶</button>
       <button id="btn-interact" type="button">✋</button>
     </div>
 
@@ -89,5 +55,13 @@
   </div>
 
   <script src="game.js"></script>
+  <script src="dog.js"></script>
+  <script>
+    document.getElementById("btn-dog").addEventListener("click", function () {
+      if (!dog) return;
+      if (dog.isDowned) { toast("سگ زخمیه! اول با غذا درمانش کن 🩹"); return; }
+      setDogMode(dog.mode === "collect" ? "attack" : "collect");
+    });
+  </script>
 </body>
 </html>
