@@ -21,7 +21,6 @@ const TILE = 40;
 const RESOURCE_DENSITY = 0.065;
 const RECIPES = {
   craft: [
-    { id: "knife", name: "چاقو", need: { wood: 2, stone: 2 }, give: { knife: 1 }, info: "دمیج 35 — برد 60" },
     { id: "wrench", name: "آچار", need: { stone: 4, metal: 3 }, give: { wrench: 1 }, info: "فقط برای تعمیر بدنه ماشین — سلاح نیست" },
     { id: "bandage", name: "باند زخم", need: { cloth: 3 }, give: { bandage: 2 }, info: "هر باند +۲۵ سلامتی" },
     { id: "fuel_can", name: "قوطی بنزین", need: { corn: 4 }, give: { fuel_can: 1 }, info: "با ذرت ساخته می‌شه، برای پر کردن باک ماشین" },
@@ -133,29 +132,29 @@ const ZOMBIE_SHEETS = {
 };
 const PLAYER_SHEETS = {
   unarmed: {
-    idle: { key: "p_unarmed_idle", frames: 1, w: 29, h: 34 },
-    walk: { key: "p_unarmed_walk", frames: 20, w: 49, h: 34 },
+    idle: { key: "p_unarmed_idle", frames: 1, w: 34, h: 29 },
+    walk: { key: "p_unarmed_walk", frames: 20, w: 34, h: 49 },
     attack: null,
   },
   knife: {
-    idle: { key: "p_knife_idle", frames: 20, w: 45, h: 34 },
-    walk: { key: "p_knife_walk", frames: 20, w: 44, h: 34 },
+    idle: { key: "p_knife_idle", frames: 20, w: 34, h: 45 },
+    walk: { key: "p_knife_walk", frames: 20, w: 34, h: 44 },
     attack: { key: "p_knife_attack", frames: 15, w: 34, h: 34 },
   },
   handgun: {
-    idle: { key: "p_handgun_idle", frames: 20, w: 45, h: 34 },
-    walk: { key: "p_handgun_walk", frames: 20, w: 44, h: 34 },
-    attack: { key: "p_handgun_shoot", frames: 3, w: 46, h: 34 },
+    idle: { key: "p_handgun_idle", frames: 20, w: 34, h: 45 },
+    walk: { key: "p_handgun_walk", frames: 20, w: 34, h: 44 },
+    attack: { key: "p_handgun_shoot", frames: 3, w: 34, h: 46 },
   },
   rifle: {
-    idle: { key: "p_rifle_idle", frames: 20, w: 56, h: 34 },
-    walk: { key: "p_rifle_walk", frames: 20, w: 56, h: 34 },
-    attack: { key: "p_rifle_shoot", frames: 3, w: 56, h: 34 },
+    idle: { key: "p_rifle_idle", frames: 20, w: 34, h: 56 },
+    walk: { key: "p_rifle_walk", frames: 20, w: 34, h: 56 },
+    attack: { key: "p_rifle_shoot", frames: 3, w: 34, h: 56 },
   },
   shotgun: {
-    idle: { key: "p_shotgun_idle", frames: 20, w: 56, h: 34 },
-    walk: { key: "p_shotgun_walk", frames: 20, w: 56, h: 34 },
-    attack: { key: "p_shotgun_shoot", frames: 3, w: 56, h: 34 },
+    idle: { key: "p_shotgun_idle", frames: 20, w: 34, h: 56 },
+    walk: { key: "p_shotgun_walk", frames: 20, w: 34, h: 56 },
+    attack: { key: "p_shotgun_shoot", frames: 3, w: 34, h: 56 },
   },
 };
 const WEAPON_TO_SHEET_CATEGORY = { fists: "unarmed", knife: "knife", handgun: "handgun", rifle: "rifle", shotgun: "shotgun" };
@@ -371,7 +370,7 @@ function freshLocalState() {
   return {
     worldSeed: Math.floor(Math.random() * 100000),
     player: { x: 0, y: 0, health: 100, hunger: 100, thirst: 100, stamina: 100 },
-    inventory: {}, equipped: null,
+    inventory: { knife: 1 }, equipped: "knife",
     cars: { main: { repaired: false, fuel: 0, health: 100 } },
     modifications: {}, guideSeen: false, waypoint: null,
     dog: { health: 100, downed: false },

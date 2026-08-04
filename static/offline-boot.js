@@ -17,8 +17,8 @@
         thirst: 100,
         stamina: 100
       },
-      inventory: {},
-      equipped: null,
+      inventory: { knife: 1 },
+      equipped: 'knife',
       cars: {
         main: {
           repaired: false,
