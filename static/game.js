@@ -1086,8 +1086,8 @@ function drawPlayer() {
       ctx.fillStyle = "#d9a441";
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
     }
-    const idleSheet = PLAYER_SHEETS.unarmed.idle;
-    drawSpriteFrameRotated(IMG[idleSheet.key], idleSheet, 0, s.x, by, 22, playerFacing);
+    const idleSheet = currentPlayerSheets().idle || PLAYER_SHEETS.unarmed.idle;
+    drawSpriteFrameRotated(IMG[idleSheet.key], idleSheet, 0, s.x, by, 36, playerFacing + Math.PI / 2);
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
     ctx.fillText(`⛽${Math.round(drivingCar.fuel)}%`, s.x, by - 34);
     return;
