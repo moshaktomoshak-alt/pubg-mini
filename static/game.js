@@ -50,7 +50,7 @@ const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: 
 const SOLID_FOR_ZOMBIE = { wall: true, door: true, window: true };
 const SOLID_FOR_PLAYER = { wall: true };
 const ITEM_FA = {
-  wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت",
+  wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت", meat: "گوشت",
   knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
   wall: "دیوار", floor: "کف", door: "در", window: "پنجره",
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
@@ -82,6 +82,7 @@ const HELP_TEXT_HTML = `
 <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
 <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
 <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه</div>
+<div class="help-item">🐄 <b>گاو:</b> بی‌آزاره و از نزدیک شدنت فرار می‌کنه؛ بزنش تا بمیره و گوشت بده — گوشت هم مثل غذا گشنگی رو کم می‌کنه</div>
 <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
 <div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی شد، با غذا (✋ کنارش) درمان می‌شه</div>
 <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
@@ -389,6 +390,7 @@ async function onDeath() {
   if (isDead) return;
   isDead = true;
   zombies = [];
+  cows = [];
   placeMode = null;
   waypointArmed = false;
   inCar = false;
@@ -557,7 +559,7 @@ function openPanel(kind, carKey) {
         b.textContent = "استفاده";
         b.onclick = () => { useBandage(); openPanel("inventory"); };
         row.appendChild(b);
-      } else if (k === "food" || k === "water") {
+      } else if (k === "food" || k === "water" || k === "meat") {
         const b = document.createElement("button");
         b.textContent = "مصرف";
         b.onclick = () => { consumeItem(k); openPanel("inventory"); };
@@ -696,10 +698,10 @@ function useBandage() {
 function consumeItem(k) {
   if ((state.inventory[k] || 0) <= 0) return;
   state.inventory[k] -= 1;
-  if (k === "food") state.player.hunger = Math.min(100, state.player.hunger + 30);
+  if (k === "food" || k === "meat") state.player.hunger = Math.min(100, state.player.hunger + 30);
   if (k === "water") state.player.thirst = Math.min(100, state.player.thirst + 30);
   panelFeedback(ITEM_FA[k] + " مصرف شد ✅");
-  toast((k === "food" ? "غذا خوردی" : "آب نوشیدی") + " 🙂");
+  toast((k === "water" ? "آب نوشیدی" : k === "meat" ? "گوشت خوردی" : "غذا خوردی") + " 🙂");
 }
 let toastTimer = null;
 function toast(msg) {
@@ -782,16 +784,25 @@ function performAimedAttack() {
   const range = WEAPON_RANGE[currentWeaponKey()];
   const dmg = WEAPON_DAMAGE[currentWeaponKey()];
   attackPulseUntil = performance.now() + ATTACK_ANIM_MS;
-  let target = null, bestD = Infinity;
+  let target = null, targetType = null, bestD = Infinity;
   for (const z of zombies) {
     const dx = z.x - state.player.x, dy = z.y - state.player.y;
     const d = Math.hypot(dx, dy);
     if (d > range) continue;
     const ang = Math.atan2(dy, dx);
     if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
-    if (d < bestD) { bestD = d; target = z; }
+    if (d < bestD) { bestD = d; target = z; targetType = "zombie"; }
+  }
+  for (const c of cows) {
+    const dx = c.x - state.player.x, dy = c.y - state.player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > range) continue;
+    const ang = Math.atan2(dy, dx);
+    if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
+    if (d < bestD) { bestD = d; target = c; targetType = "cow"; }
   }
   if (!target) return;
+  if (targetType === "cow") { damageCow(target, dmg); return; }
   target.hp -= dmg;
   target.hitFlashUntil = performance.now() + 200;
   if (target.hp <= 0) {
@@ -1123,6 +1134,7 @@ function loop() {
   if (state && !isDead && !isPanelOpen && !isHidden) {
     updatePlayer(dt);
     updateZombies(dt);
+    if (typeof updateCows === "function") updateCows(dt);
     if (typeof updateDog === "function") updateDog(dt);
   }
   if (state) {
@@ -1130,6 +1142,7 @@ function loop() {
     drawCars();
     if (typeof drawDog === "function") drawDog();
     drawZombies();
+    if (typeof drawCows === "function") drawCows();
     drawWaypoint();
     drawPlayer();
     updateHUD();
@@ -1152,6 +1165,7 @@ function updateHUD() {
     await loadState();
     document.getElementById("loading").style.display = "none";
     lastZombieSpawn = performance.now();
+    lastCowSpawn = performance.now();
     if (!state.guideSeen) {
       openPanel("help");
       state.guideSeen = true;
