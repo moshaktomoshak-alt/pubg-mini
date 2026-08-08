@@ -92,7 +92,10 @@ const HELP_TEXT_HTML = `
 <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
 <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
 <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه. ۴ نوع داره: عادی، دونده (سریع)، چاق (کند ولی HP و دمیج بالا)، جیغ‌زن (وقتی می‌بینتت بقیه‌ی زامبی‌های اطراف رو هم خبر می‌کنه)</div>
-<div class="help-item">🐄 <b>گاو:</b> بی‌آزاره و از نزدیک شدنت فرار می‌کنه؛ بزنش تا بمیره و گوشت بده — گوشت هم مثل غذا گشنگی رو کم می‌کنه</div>
+<div class="help-item">🐄 <b>گاو:</b> بی‌آزاره و از نزدیک شدنت فرار می‌کنه؛ بزنش تا بمیره و گوشت بده — گوشت هم مثل غذا گشنگی رو کم می‌کنه</div>
+<div class="help-item">🔫 <b>بازمانده‌ی خصمانه:</b> از دور بهت شلیک می‌کنه، بزنش تا بمیره و لوت میده</div>
+<div class="help-item">🛒 <b>معامله‌گر:</b> نزدیکش برو و «تعامل» بزن تا پنل معامله باز شه</div>
+<div class="help-item">🤝 <b>همراه:</b> بازمانده‌های زرد رنگ دور نقشه‌ن، هرکدوم ۱۰ تا از یه منبع (آب/فلز/ذرت/غذا) می‌خوان تا دوستت بشن (حداکثر ۷ تا). با دکمه‌ی 🤝 حالتشون رو عوض کن: دفاع، جمع‌آوری منابع، یا دستور غذا خوردن. اگه جونشون صفر شه برای همیشه می‌میرن</div>
 <div class="help-item">🚗 <b>ماشین:</b> چند تا ماشین خراب مختلف تو نقشه پخشن. هرکدوم اول موتور (۳فلز+۲سنگ) بعد بنزین لازم دارن. تو ماشین اگه زامبی بهت بزنه بدنه خراب می‌شه؛ هر آچار ۵۰٪ بدنه رو تعمیر می‌کنه</div>
 <div class="help-item">🐶 <b>سگ همراه:</b> دنبالت می‌آد و خودکار به زامبی‌های نزدیک حمله می‌کنه. اگه زخمی شد، با غذا (✋ کنارش) درمان می‌شه</div>
 <div class="help-item">💀 اگه سلامتیت صفر بشه، دنیای تازه از اول شروع می‌شه</div>
@@ -401,6 +404,10 @@ async function onDeath() {
   isDead = true;
   zombies = [];
   cows = [];
+  hostiles = [];
+  recruits = [];
+  companions = [];
+  trader = null;
   placeMode = null;
   waypointArmed = false;
   inCar = false;
@@ -575,6 +582,50 @@ function openPanel(kind, carKey) {
         b.onclick = () => { consumeItem(k); openPanel("inventory"); };
         row.appendChild(b);
       }
+      content.appendChild(row);
+    }
+  } else if (kind === "trader") {
+    title.textContent = "🛒 معامله‌گر";
+    for (const offer of TRADER_OFFERS) {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      const have = state.inventory[offer.give] || 0;
+      const ok = have >= offer.giveAmt;
+      row.innerHTML = `<span class="name">بده: ${offer.giveAmt} ${ITEM_FA[offer.give]} <span style="color:${ok ? '#7bd88f' : '#e07a7a'}">(داری ${have})</span> → بگیر: ${offer.getAmt} ${ITEM_FA[offer.get]}</span>`;
+      const b = document.createElement("button");
+      b.textContent = "معامله";
+      b.disabled = !ok;
+      b.onclick = () => {
+        state.inventory[offer.give] -= offer.giveAmt;
+        state.inventory[offer.get] = (state.inventory[offer.get] || 0) + offer.getAmt;
+        panelFeedback("معامله شد ✅");
+        openPanel("trader");
+      };
+      row.appendChild(b);
+      content.appendChild(row);
+    }
+  } else if (kind === "companions") {
+    title.textContent = `🤝 همراه‌ها (${companions.length}/${COMPANION_MAX})`;
+    const modes = [
+      { id: "defend", label: "⚔️ دفاع از من و حمله به زامبی/دشمن" },
+      { id: "gather", label: "📦 جمع‌آوری منابع" },
+      { id: "forage", label: "🍖 برو غذا بخور تا جونت پر شه" },
+    ];
+    for (const m of modes) {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = `<span class="name">${m.label}</span>`;
+      const b = document.createElement("button");
+      b.textContent = companionMode === m.id ? "فعاله" : "انتخاب";
+      b.disabled = companionMode === m.id;
+      b.onclick = () => { setCompanionMode(m.id); openPanel("companions"); };
+      row.appendChild(b);
+      content.appendChild(row);
+    }
+    if (companions.length === 0) {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = "<span class='name'>هنوز همراهی نداری — تو نقشه دنبال بازمانده‌های زرد بگرد و باهاشون تعامل کن</span>";
       content.appendChild(row);
     }
   } else {
@@ -768,6 +819,8 @@ function doInteract() {
   if (!state || isDead || isPanelOpen) return;
   if (inCar) { openPanel("car", drivingCarKey || "main"); return; }
   if (tryFeedDog()) return;
+  if (typeof tryTalkToTrader === "function" && tryTalkToTrader()) return;
+  if (typeof tryRecruit === "function" && tryRecruit()) return;
   const car = nearestCar();
   if (car) { openPanel("car", car.key); return; }
   const res = nearestResource();
@@ -811,8 +864,17 @@ function performAimedAttack() {
     if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
     if (d < bestD) { bestD = d; target = c; targetType = "cow"; }
   }
+  for (const h of hostiles) {
+    const dx = h.x - state.player.x, dy = h.y - state.player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > range) continue;
+    const ang = Math.atan2(dy, dx);
+    if (angleDiffDeg(ang, playerFacing) > ATTACK_CONE_DEG) continue;
+    if (d < bestD) { bestD = d; target = h; targetType = "hostile"; }
+  }
   if (!target) return;
   if (targetType === "cow") { damageCow(target, dmg); return; }
+  if (targetType === "hostile") { damageHostile(target, dmg); return; }
   target.hp -= dmg;
   target.hitFlashUntil = performance.now() + 200;
   if (target.hp <= 0) {
@@ -1173,6 +1235,9 @@ function loop() {
     updateZombies(dt);
     if (typeof updateCows === "function") updateCows(dt);
     if (typeof updateDog === "function") updateDog(dt);
+    if (typeof updateHostiles === "function") updateHostiles(dt);
+    if (typeof updateRecruits === "function") updateRecruits(dt);
+    if (typeof updateCompanions === "function") updateCompanions(dt);
   }
   if (state) {
     drawWorld();
@@ -1180,6 +1245,10 @@ function loop() {
     if (typeof drawDog === "function") drawDog();
     drawZombies();
     if (typeof drawCows === "function") drawCows();
+    if (typeof drawTrader === "function") drawTrader();
+    if (typeof drawRecruits === "function") drawRecruits();
+    if (typeof drawHostiles === "function") drawHostiles();
+    if (typeof drawCompanions === "function") drawCompanions();
     drawWaypoint();
     drawPlayer();
     updateHUD();
@@ -1202,7 +1271,10 @@ function updateHUD() {
     await loadState();
     document.getElementById("loading").style.display = "none";
     lastZombieSpawn = performance.now();
-    lastCowSpawn = performance.now();
+    lastCowSpawn = performance.now();
+    lastHostileSpawn = performance.now();
+    lastRecruitSpawn = performance.now();
+    if (typeof initTrader === "function") initTrader();
     if (!state.guideSeen) {
       openPanel("help");
       state.guideSeen = true;
