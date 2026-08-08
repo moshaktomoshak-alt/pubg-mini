@@ -31,6 +31,7 @@
 
     <div id="action-buttons">
       <button id="btn-dog" type="button">🐶</button>
+      <button id="btn-companions" type="button">🤝</button>
       <button id="btn-interact" type="button">✋</button>
     </div>
 
@@ -56,12 +57,16 @@
 
   <script src="dog.js"></script>
   <script src="cow.js"></script>
+  <script src="npc.js"></script>
   <script src="game.js"></script>
   <script>
     document.getElementById("btn-dog").addEventListener("click", function () {
       if (!dog) return;
       if (dog.isDowned) { toast("سگ زخمیه! اول با غذا درمانش کن 🩹"); return; }
       setDogMode(dog.mode === "collect" ? "attack" : "collect");
+    });
+    document.getElementById("btn-companions").addEventListener("click", function () {
+      openPanel("companions");
     });
     // اگه بازی باز هم گیر کرد، این خط علت رو توی دیباگ می‌نویسه
     setTimeout(function () {
