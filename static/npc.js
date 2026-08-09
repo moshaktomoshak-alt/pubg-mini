@@ -84,7 +84,7 @@ function spawnHostile() {
 function updateHostiles(dt) {
   const now = performance.now();
   if (now - lastHostileSpawn > HOSTILE_SPAWN_EVERY) { spawnHostile(); lastHostileSpawn = now; }
-  hostiles = hostiles.filter((h) => Math.hypot(h.x - state.player.x, h.y - state.player.y) < HOSTILE_DESPAWN_DIST);
+  hostiles = hostiles.filter((h) => h.isHouse || Math.hypot(h.x - state.player.x, h.y - state.player.y) < HOSTILE_DESPAWN_DIST);
 
   for (const h of hostiles) {
     const dx = state.player.x - h.x, dy = state.player.y - h.y;
@@ -149,6 +149,7 @@ function damageHostile(h, dmg) {
   h.hitFlashUntil = performance.now() + 200;
   if (h.hp <= 0) {
     hostiles = hostiles.filter((x) => x !== h);
+    if (h.isHouse && state.houseNpcs && state.houseNpcs[h.houseKey]) state.houseNpcs[h.houseKey].dead = true;
     const got = [];
     for (const loot of HOSTILE_LOOT_TABLE) {
       const amt = loot.min + Math.floor(Math.random() * (loot.max - loot.min + 1));
@@ -187,11 +188,19 @@ function drawTrader() {
 }
 
 function tryTalkToTrader() {
-  if (!trader) return false;
-  const d = Math.hypot(trader.x - state.player.x, trader.y - state.player.y);
-  if (d > INTERACT_RANGE) return false;
-  openPanel("trader");
-  return true;
+  if (trader) {
+    const d = Math.hypot(trader.x - state.player.x, trader.y - state.player.y);
+    if (d <= INTERACT_RANGE) { openPanel("trader"); return true; }
+  }
+  if (typeof getNearbyHouses === "function" && typeof getHouseNpcState === "function") {
+    for (const h of getNearbyHouses()) {
+      const st = getHouseNpcState(h);
+      if (st.type !== "trader") continue;
+      const d = Math.hypot(h.npcX - state.player.x, h.npcY - state.player.y);
+      if (d <= INTERACT_RANGE) { openPanel("trader"); return true; }
+    }
+  }
+  return false;
 }
 
 // ==================== بازمانده‌ی قابل‌جذب ====================
@@ -227,7 +236,7 @@ function spawnRecruit() {
 function updateRecruits(dt) {
   const now = performance.now();
   if (now - lastRecruitSpawn > RECRUIT_SPAWN_EVERY) { spawnRecruit(); lastRecruitSpawn = now; }
-  recruits = recruits.filter((r) => Math.hypot(r.x - state.player.x, r.y - state.player.y) < RECRUIT_DESPAWN_DIST);
+  recruits = recruits.filter((r) => r.isHouse || Math.hypot(r.x - state.player.x, r.y - state.player.y) < RECRUIT_DESPAWN_DIST);
 
   for (const r of recruits) {
     if (now > r.nextWanderAt) {
@@ -274,6 +283,7 @@ function tryRecruit() {
   }
   state.inventory[best.wantType] -= RECRUIT_WANT_AMOUNT;
   recruits = recruits.filter((r) => r !== best);
+  if (best.isHouse && state.houseNpcs && state.houseNpcs[best.houseKey]) state.houseNpcs[best.houseKey].recruited = true;
   companions.push({
     x: best.x, y: best.y,
     hp: COMPANION_MAX_HP, maxHp: COMPANION_MAX_HP,
