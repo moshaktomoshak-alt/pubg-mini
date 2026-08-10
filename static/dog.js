@@ -210,11 +210,6 @@ function drawDog() {
 
   ctx.fillStyle = hpPercent > 0.5 ? "#4CAF50" : (hpPercent > 0.25 ? "#FFC107" : "#F44336");
   ctx.fillRect(s.x - barWidth / 2, s.y - 25, barWidth * hpPercent, barHeight);
-
-  ctx.fillStyle = "#fff";
-  ctx.font = "10px Tahoma";
-  ctx.textAlign = "center";
-  ctx.fillText(`🐕`, s.x, s.y - 28);
 }
 
 function healDog(foodType) {

@@ -42,6 +42,62 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   ctx.restore();
 }
 
+// ====================    (     /   ) ====================
+function drawAlertIcon(x, y, color) {
+  ctx.fillStyle = color || "#fff2a8";
+  ctx.beginPath();
+  ctx.moveTo(x - 3, y - 10); ctx.lineTo(x + 3, y - 10); ctx.lineTo(x + 1.5, y + 2); ctx.lineTo(x - 1.5, y + 2);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y + 6, 2, 0, Math.PI * 2); ctx.fill();
+}
+function drawScreamIcon(x, y) {
+  ctx.strokeStyle = "#c9a8ff";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(x - 4, y, 4 + i * 3.5, -0.6, 0.6);
+    ctx.stroke();
+  }
+}
+function drawCartIcon(x, y) {
+  ctx.strokeStyle = "#fff";
+  ctx.fillStyle = "#fff";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x - 6, y - 5, 10, 6);
+  ctx.beginPath(); ctx.moveTo(x - 6, y - 5); ctx.lineTo(x - 8, y - 8); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x - 4, y + 3, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 2, y + 3, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+function drawWantIcon(x, y, type) {
+  if (type === "water") {
+    ctx.fillStyle = "#4fb0e8";
+    ctx.beginPath();
+    ctx.moveTo(x, y - 6); ctx.quadraticCurveTo(x + 5, y + 2, x, y + 6); ctx.quadraticCurveTo(x - 5, y + 2, x, y - 6);
+    ctx.fill();
+  } else if (type === "metal") {
+    ctx.fillStyle = "#a8adb5";
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#5a5f66";
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+  } else if (type === "corn") {
+    ctx.fillStyle = "#e8c93f";
+    ctx.beginPath(); ctx.ellipse(x, y, 4, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#a88a1f";
+    ctx.lineWidth = 1;
+    for (let yy = -4; yy <= 4; yy += 3) { ctx.beginPath(); ctx.moveTo(x - 4, y + yy); ctx.lineTo(x + 4, y + yy); ctx.stroke(); }
+  } else {
+    ctx.fillStyle = "#b5651d";
+    ctx.beginPath(); ctx.ellipse(x, y, 5, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#e8dcc0";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x + 3, y - 3); ctx.lineTo(x + 7, y - 7); ctx.stroke();
+  }
+  ctx.fillStyle = "#fff";
+  ctx.font = "10px Tahoma";
+  ctx.textAlign = "center";
+  ctx.fillText("×" + RECRUIT_WANT_AMOUNT, x, y + 15);
+}
+
 // ====================   ====================
 const HOSTILE_MAX = 6;
 const HOSTILE_SPAWN_EVERY = 11000;
@@ -64,11 +120,12 @@ let lastHostileSpawn = 0;
 
 function spawnHostile() {
   if (hostiles.length >= HOSTILE_MAX) return;
-  const ang = Math.random() * Math.PI * 2;
-  const dist = 450 + Math.random() * 200;
+  const pos = (typeof pickSpawnPosAvoidingHouses === "function")
+    ? pickSpawnPosAvoidingHouses(state.player.x, state.player.y, 450, 200)
+    : { x: state.player.x + Math.cos(Math.random() * Math.PI * 2) * 500, y: state.player.y + Math.sin(Math.random() * Math.PI * 2) * 500 };
   hostiles.push({
-    x: state.player.x + Math.cos(ang) * dist,
-    y: state.player.y + Math.sin(ang) * dist,
+    x: pos.x,
+    y: pos.y,
     hp: HOSTILE_MAX_HP,
     maxHp: HOSTILE_MAX_HP,
     facing: 0,
@@ -152,10 +209,7 @@ function drawHostiles() {
       ctx.stroke();
     }
     if (now < h.alertPulseUntil) {
-      ctx.fillStyle = "#fff2a8";
-      ctx.font = "16px Tahoma";
-      ctx.textAlign = "center";
-      ctx.fillText("", s.x, s.y - 26);
+      drawAlertIcon(s.x, s.y - 20);
     }
     ctx.fillStyle = "#000";
     ctx.fillRect(s.x - 14, s.y - 24, 28, 4);
@@ -201,10 +255,7 @@ function drawTrader() {
   trader.walkPhase += 0.02;
   const s = worldToScreen(trader.x, trader.y);
   drawHumanTopDown(s.x, s.y, Math.sin(trader.walkPhase) * 0.2, trader.walkPhase, "#2b5f8a", "#d9b38c", false);
-  ctx.fillStyle = "#fff";
-  ctx.font = "16px Tahoma";
-  ctx.textAlign = "center";
-  ctx.fillText("", s.x, s.y - 26);
+  drawCartIcon(s.x, s.y - 22);
 }
 
 function tryTalkToTrader() {
@@ -237,12 +288,13 @@ let lastRecruitSpawn = 0;
 function spawnRecruit() {
   if (recruits.length >= RECRUIT_MAX) return;
   if (companions.length >= COMPANION_MAX) return;
-  const ang = Math.random() * Math.PI * 2;
-  const dist = 380 + Math.random() * 220;
+  const pos = (typeof pickSpawnPosAvoidingHouses === "function")
+    ? pickSpawnPosAvoidingHouses(state.player.x, state.player.y, 380, 220)
+    : { x: state.player.x + Math.cos(Math.random() * Math.PI * 2) * 450, y: state.player.y + Math.sin(Math.random() * Math.PI * 2) * 450 };
   const wantType = RECRUIT_WANT_TYPES[Math.floor(Math.random() * RECRUIT_WANT_TYPES.length)];
   recruits.push({
-    x: state.player.x + Math.cos(ang) * dist,
-    y: state.player.y + Math.sin(ang) * dist,
+    x: pos.x,
+    y: pos.y,
     facing: Math.random() * Math.PI * 2,
     walkPhase: Math.random() * 10,
     wantType,
@@ -278,10 +330,7 @@ function drawRecruits() {
   for (const r of recruits) {
     const s = worldToScreen(r.x, r.y);
     drawHumanTopDown(s.x, s.y, r.facing, r.walkPhase, "#b89b2b", "#d9b38c", false);
-    ctx.fillStyle = "#fff";
-    ctx.font = "13px Tahoma";
-    ctx.textAlign = "center";
-    ctx.fillText(RECRUIT_WANT_ICON[r.wantType] + " ×" + RECRUIT_WANT_AMOUNT, s.x, s.y - 24);
+    drawWantIcon(s.x, s.y - 18, r.wantType);
   }
 }
 

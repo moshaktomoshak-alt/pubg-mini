@@ -92,11 +92,12 @@ function drawCowTopDown(x, y, facing, walkPhase) {
 // ==================== اسپاون گاو ====================
 function spawnCow() {
   if (cows.length >= COW_MAX) return;
-  const ang = Math.random() * Math.PI * 2;
-  const dist = 350 + Math.random() * 250;
+  const pos = (typeof pickSpawnPosAvoidingHouses === "function")
+    ? pickSpawnPosAvoidingHouses(state.player.x, state.player.y, 350, 250)
+    : { x: state.player.x + Math.cos(Math.random() * Math.PI * 2) * 400, y: state.player.y + Math.sin(Math.random() * Math.PI * 2) * 400 };
   cows.push({
-    x: state.player.x + Math.cos(ang) * dist,
-    y: state.player.y + Math.sin(ang) * dist,
+    x: pos.x,
+    y: pos.y,
     hp: COW_MAX_HP,
     facing: Math.random() * Math.PI * 2,
     walkPhase: Math.random() * 10,
