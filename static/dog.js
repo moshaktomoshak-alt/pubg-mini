@@ -124,15 +124,13 @@ function updateDog(dt) {
     }
 
     if (nearestZombie && nearestZombieDist < DOG_SIGHT_RANGE) {
-      dog.facing = Math.atan2(nearestZombie.y - dog.y, nearestZombie.x - dog.x);
       dog.walkPhase += dt * 0.3;
 
       if (nearestZombieDist > DOG_ATTACK_RANGE) {
-        const moveDx = (nearestZombie.x - dog.x) / nearestZombieDist * DOG_SPEED * dt;
-        const moveDy = (nearestZombie.y - dog.y) / nearestZombieDist * DOG_SPEED * dt;
-        moveWithCollision(dog, moveDx, moveDy, () => false);
+        moveTowardSmart(dog, nearestZombie.x, nearestZombie.y, DOG_SPEED, dt, isSolidForZombie);
       } else {
-        if (now - dog.lastAttackTime > DOG_ATTACK_INTERVAL) {
+        dog.facing = Math.atan2(nearestZombie.y - dog.y, nearestZombie.x - dog.x);
+        if (now - dog.lastAttackTime > DOG_ATTACK_INTERVAL && hasLineOfSight(dog.x, dog.y, nearestZombie.x, nearestZombie.y)) {
           dog.lastAttackTime = now;
           nearestZombie.hp -= DOG_ATTACK_DAMAGE;
           nearestZombie.hitFlashUntil = now + 200;
@@ -144,11 +142,8 @@ function updateDog(dt) {
       }
     } else {
       if (distToPlayer > DOG_FOLLOW_DISTANCE) {
-        dog.facing = Math.atan2(dy, dx);
         dog.walkPhase += dt * 0.25;
-        const moveDx = dx / distToPlayer * DOG_SPEED * dt;
-        const moveDy = dy / distToPlayer * DOG_SPEED * dt;
-        moveWithCollision(dog, moveDx, moveDy, () => false);
+        moveTowardSmart(dog, state.player.x, state.player.y, DOG_SPEED, dt, isSolidForZombie);
       }
     }
   }
@@ -174,17 +169,13 @@ function updateDog(dt) {
         dog.facing = Math.atan2(best.wy - dog.y, best.wx - dog.x);
       } else {
         if (distToPlayer > DOG_FOLLOW_DISTANCE) {
-          dog.facing = Math.atan2(dy, dx);
-          const moveDx = dx / distToPlayer * DOG_SPEED * dt;
-          const moveDy = dy / distToPlayer * DOG_SPEED * dt;
-          moveWithCollision(dog, moveDx, moveDy, () => false);
+          moveTowardSmart(dog, state.player.x, state.player.y, DOG_SPEED, dt, isSolidForZombie);
         }
       }
     }
     else if (dog.collectState === 'movingToResource' && dog.targetResource) {
-      const dx = dog.targetResource.wx - dog.x;
-      const dy = dog.targetResource.wy - dog.y;
-      const dist = Math.hypot(dx, dy);
+      const dist = moveTowardSmart(dog, dog.targetResource.wx, dog.targetResource.wy, DOG_SPEED, dt, isSolidForZombie);
+      dog.walkPhase += dt * 0.3;
       if (dist < 20) {
         const def = RESOURCE_NODES[dog.targetResource.res];
         const amt = def.amount[0] + Math.floor(Math.random() * (def.amount[1] - def.amount[0] + 1));
@@ -193,41 +184,13 @@ function updateDog(dt) {
         dog.collectState = 'returningToPlayer';
         toast(`سگ +${amt} ${ITEM_FA[def.gives]} پیدا کرد! 🐕`);
         dog.targetResource = null;
-      } else {
-        dog.facing = Math.atan2(dy, dx);
-        dog.walkPhase += dt * 0.3;
-        const moveDx = dx / dist * DOG_SPEED * dt;
-        const moveDy = dy / dist * DOG_SPEED * dt;
-        moveWithCollision(dog, moveDx, moveDy, () => false);
       }
     }
     else if (dog.collectState === 'returningToPlayer') {
-      const dx = state.player.x - dog.x;
-      const dy = state.player.y - dog.y;
-      const dist = Math.hypot(dx, dy);
+      const dist = moveTowardSmart(dog, state.player.x, state.player.y, DOG_SPEED, dt, isSolidForZombie);
+      dog.walkPhase += dt * 0.25;
       if (dist < DOG_DELIVER_DISTANCE) {
         dog.collectState = 'idle';
-        dog.facing = Math.atan2(dy, dx);
-      } else {
-        dog.facing = Math.atan2(dy, dx);
-        dog.walkPhase += dt * 0.25;
-        const moveDx = dx / dist * DOG_SPEED * dt;
-        const moveDy = dy / dist * DOG_SPEED * dt;
-        moveWithCollision(dog, moveDx, moveDy, () => false);
-      }
-    }
-  }
-
-  for (const z of zombies) {
-    const zdx = z.x - dog.x;
-    const zdy = z.y - dog.y;
-    const zd = Math.hypot(zdx, zdy);
-    if (zd < 25 && z.alerted) {
-      dog.hp -= ZOMBIE_DAMAGE * dt * 0.08;
-      if (dog.hp <= 0) {
-        dog.hp = 0;
-        dog.isDowned = true;
-        toast("سگت زخمی شد! با غذا درمانش کن 🐕💔");
       }
     }
   }

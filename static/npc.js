@@ -1,4 +1,4 @@
-// ==================== رسم مشترک آدمک از نمای بالا (بدون نیاز به PNG) ====================
+// ====================       (   PNG) ====================
 function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun) {
   ctx.save();
   ctx.translate(x, y);
@@ -7,7 +7,7 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   const size = 13;
   const armSwing = Math.sin(walkPhase) * 3;
 
-  // بازوها
+  // 
   ctx.strokeStyle = bodyColor;
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -17,19 +17,19 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   ctx.lineTo(size * 0.25, size * 0.5 + armSwing * 0.3);
   ctx.stroke();
 
-  // بدن
+  // 
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, size * 0.85, size * 0.65, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // سر (سمت جهت نگاه)
+  //  (  )
   ctx.fillStyle = headColor;
   ctx.beginPath();
   ctx.arc(size * 0.7, 0, size * 0.4, 0, Math.PI * 2);
   ctx.fill();
 
-  // اسلحه
+  // 
   if (hasGun) {
     ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 2.5;
@@ -42,7 +42,7 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   ctx.restore();
 }
 
-// ==================== دشمن خصمانه ====================
+// ====================   ====================
 const HOSTILE_MAX = 6;
 const HOSTILE_SPAWN_EVERY = 11000;
 const HOSTILE_DESPAWN_DIST = 1500;
@@ -87,7 +87,8 @@ function updateHostiles(dt) {
   hostiles = hostiles.filter((h) => h.isHouse || Math.hypot(h.x - state.player.x, h.y - state.player.y) < HOSTILE_DESPAWN_DIST);
 
   for (const h of hostiles) {
-    const dx = state.player.x - h.x, dy = state.player.y - h.y;
+    const nearest = findNearestDefender(h.x, h.y);
+    const dx = nearest.x - h.x, dy = nearest.y - h.y;
     const d = Math.hypot(dx, dy) || 1;
     if (!h.alerted) {
       if (d <= HOSTILE_SIGHT_RANGE) { h.alerted = true; h.alertPulseUntil = now + 700; }
@@ -95,22 +96,39 @@ function updateHostiles(dt) {
       h.alerted = false;
     }
     if (h.alerted) {
-      h.facing = Math.atan2(dy, dx);
-      if (d > HOSTILE_SHOOT_RANGE) {
+      const hasLos = hasLineOfSight(h.x, h.y, nearest.x, nearest.y);
+      if (d > HOSTILE_SHOOT_RANGE || !hasLos) {
         h.walkPhase += dt * 0.25;
-        moveWithCollision(h, (dx / d) * HOSTILE_SPEED * dt, (dy / d) * HOSTILE_SPEED * dt, isSolidForZombie);
+        moveTowardSmart(h, nearest.x, nearest.y, HOSTILE_SPEED, dt, isSolidForZombie);
       } else if (now - h.lastShotAt > HOSTILE_SHOOT_INTERVAL) {
+        h.facing = Math.atan2(dy, dx);
         h.lastShotAt = now;
         h.shootFlashUntil = now + 150;
-        if (inCar) {
-          const car = getCarState(drivingCarKey || "main");
-          car.health = Math.max(0, car.health - HOSTILE_SHOOT_DAMAGE);
-          if (car.health <= 0) { car.repaired = false; exitCar(); toast("ماشین از کار افتاد! 💥"); }
-        } else {
-          state.player.health = Math.max(0, state.player.health - HOSTILE_SHOOT_DAMAGE);
-          playerHitFlashUntil = now + 200;
-          toast("یه بازمانده بهت شلیک کرد! 🔫");
+        h.shootTargetX = nearest.x; h.shootTargetY = nearest.y;
+        if (nearest.kind === "player") {
+          if (inCar) {
+            const car = getCarState(drivingCarKey || "main");
+            car.health = Math.max(0, car.health - HOSTILE_SHOOT_DAMAGE);
+            if (car.health <= 0) { car.repaired = false; exitCar(); toast("   ! "); }
+          } else {
+            state.player.health = Math.max(0, state.player.health - HOSTILE_SHOOT_DAMAGE);
+            playerHitFlashUntil = now + 200;
+            toast("    ! ");
+          }
+        } else if (nearest.kind === "dog") {
+          nearest.ref.hp -= HOSTILE_SHOOT_DAMAGE;
+          nearest.ref.hitFlashUntil = now + 200;
+          if (nearest.ref.hp <= 0) {
+            nearest.ref.hp = 0;
+            nearest.ref.isDowned = true;
+            toast("  !     ");
+          }
+        } else if (nearest.kind === "companion") {
+          nearest.ref.hp -= HOSTILE_SHOOT_DAMAGE;
+          nearest.ref.hitFlashUntil = now + 200;
         }
+      } else {
+        h.facing = Math.atan2(dy, dx);
       }
     }
   }
@@ -123,7 +141,9 @@ function drawHostiles() {
     drawHumanTopDown(s.x, s.y, h.facing, h.walkPhase, "#8a2b2b", "#d9b38c", true);
     if (now < h.hitFlashUntil) drawHitFlash(s.x, s.y, 16);
     if (now < h.shootFlashUntil) {
-      const ps = worldToScreen(state.player.x, state.player.y);
+      const tx = h.shootTargetX != null ? h.shootTargetX : state.player.x;
+      const ty = h.shootTargetY != null ? h.shootTargetY : state.player.y;
+      const ps = worldToScreen(tx, ty);
       ctx.strokeStyle = "rgba(255,230,120,0.85)";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -135,7 +155,7 @@ function drawHostiles() {
       ctx.fillStyle = "#fff2a8";
       ctx.font = "16px Tahoma";
       ctx.textAlign = "center";
-      ctx.fillText("❗", s.x, s.y - 26);
+      ctx.fillText("", s.x, s.y - 26);
     }
     ctx.fillStyle = "#000";
     ctx.fillRect(s.x - 14, s.y - 24, 28, 4);
@@ -158,11 +178,11 @@ function damageHostile(h, dmg) {
         got.push(`+${amt} ${ITEM_FA[loot.item]}`);
       }
     }
-    toast("بازمانده کشته شد 💀" + (got.length ? " — " + got.join("، ") : ""));
+    toast("   " + (got.length ? " � " + got.join(" ") : ""));
   }
 }
 
-// ==================== تریدر (ثابت، بدون خطر) ====================
+// ====================  (  ) ====================
 const TRADER_OFFERS = [
   { id: "t1", give: "meat", giveAmt: 5, get: "bandage", getAmt: 1 },
   { id: "t2", give: "wood", giveAmt: 6, get: "water", getAmt: 3 },
@@ -184,7 +204,7 @@ function drawTrader() {
   ctx.fillStyle = "#fff";
   ctx.font = "16px Tahoma";
   ctx.textAlign = "center";
-  ctx.fillText("🛒", s.x, s.y - 26);
+  ctx.fillText("", s.x, s.y - 26);
 }
 
 function tryTalkToTrader() {
@@ -203,13 +223,13 @@ function tryTalkToTrader() {
   return false;
 }
 
-// ==================== بازمانده‌ی قابل‌جذب ====================
+// ====================   ====================
 const RECRUIT_MAX = 3;
 const RECRUIT_SPAWN_EVERY = 14000;
 const RECRUIT_DESPAWN_DIST = 1500;
 const RECRUIT_WANT_TYPES = ["water", "metal", "corn", "food"];
 const RECRUIT_WANT_AMOUNT = 10;
-const RECRUIT_WANT_ICON = { water: "💧", metal: "🔩", corn: "🌽", food: "🍖" };
+const RECRUIT_WANT_ICON = { water: "", metal: "", corn: "", food: "" };
 
 let recruits = [];
 let lastRecruitSpawn = 0;
@@ -261,7 +281,7 @@ function drawRecruits() {
     ctx.fillStyle = "#fff";
     ctx.font = "13px Tahoma";
     ctx.textAlign = "center";
-    ctx.fillText(RECRUIT_WANT_ICON[r.wantType] + " ×" + RECRUIT_WANT_AMOUNT, s.x, s.y - 24);
+    ctx.fillText(RECRUIT_WANT_ICON[r.wantType] + " �" + RECRUIT_WANT_AMOUNT, s.x, s.y - 24);
   }
 }
 
@@ -274,11 +294,11 @@ function tryRecruit() {
   }
   if (!best) return false;
   if (companions.length >= COMPANION_MAX) {
-    toast("جای بیشتری برای همراه نداری (حداکثر ۷ تا) 🚫");
+    toast("     (  ) ");
     return true;
   }
   if ((state.inventory[best.wantType] || 0) < RECRUIT_WANT_AMOUNT) {
-    toast(`برای دوست شدن باهاش ${RECRUIT_WANT_AMOUNT} ${ITEM_FA[best.wantType]} لازم داری`);
+    toast(`    ${RECRUIT_WANT_AMOUNT} ${ITEM_FA[best.wantType]}  `);
     return true;
   }
   state.inventory[best.wantType] -= RECRUIT_WANT_AMOUNT;
@@ -292,11 +312,11 @@ function tryRecruit() {
     collectState: "idle", targetResource: null,
     forageState: "idle", targetFood: null,
   });
-  toast("یه همراه‌ی جدید بهت پیوست! 🤝");
+  toast("    ! ");
   return true;
 }
 
-// ==================== همراه (تا ۷ تا هم‌زمان) ====================
+// ====================  (   ) ====================
 const COMPANION_MAX = 7;
 const COMPANION_SPEED = 2.0;
 const COMPANION_MAX_HP = 100;
@@ -318,8 +338,8 @@ function setCompanionMode(mode) {
     c.collectState = "idle"; c.targetResource = null;
     c.forageState = "idle"; c.targetFood = null;
   }
-  const label = mode === "defend" ? "دفاع ⚔️" : mode === "gather" ? "جمع‌آوری منابع 📦" : "دستور غذا خوردن 🍖";
-  toast("حالت همراه‌ها: " + label);
+  const label = mode === "defend" ? " " : mode === "gather" ? "  " : "   ";
+  toast(" : " + label);
 }
 
 function findNearestFoodTile(x, y) {
@@ -346,15 +366,6 @@ function updateCompanions(dt) {
   const now = performance.now();
 
   companions.forEach((c, i) => {
-    for (const z of zombies) {
-      if (!z.alerted) continue;
-      const zd = Math.hypot(z.x - c.x, z.y - c.y);
-      if (zd < 24) {
-        const zdef = (typeof ZOMBIE_TYPES !== "undefined" && ZOMBIE_TYPES[z.kind]) || { dmgMult: 1 };
-        c.hp -= ZOMBIE_DAMAGE * zdef.dmgMult * dt * 0.08;
-        c.hitFlashUntil = now + 200;
-      }
-    }
     if (c.hp <= 0) return;
 
     const followAngle = (i / companions.length) * Math.PI * 2;
@@ -372,26 +383,27 @@ function updateCompanions(dt) {
         if (d < targetDist) { targetDist = d; target = h; targetKind = "hostile"; }
       }
       if (target) {
-        c.facing = Math.atan2(target.y - c.y, target.x - c.x);
-        if (targetDist > COMPANION_SHOOT_RANGE) {
+        const hasLos = hasLineOfSight(c.x, c.y, target.x, target.y);
+        if (targetDist > COMPANION_SHOOT_RANGE || !hasLos) {
           c.walkPhase += dt * 0.3;
-          moveWithCollision(c, (target.x - c.x) / targetDist * COMPANION_SPEED * dt, (target.y - c.y) / targetDist * COMPANION_SPEED * dt, isSolidForZombie);
-        } else if (now - c.lastShotAt > COMPANION_SHOOT_INTERVAL) {
-          c.lastShotAt = now;
-          target.hp -= COMPANION_SHOOT_DAMAGE;
-          target.hitFlashUntil = now + 200;
-          if (target.hp <= 0) {
-            if (targetKind === "zombie") { zombies = zombies.filter((z) => z !== target); toast("همراهت یه زامبی رو کشت! 🤝"); }
-            else { hostiles = hostiles.filter((h) => h !== target); toast("همراهت یه دشمن رو کشت! 🤝"); }
+          moveTowardSmart(c, target.x, target.y, COMPANION_SPEED, dt, isSolidForZombie);
+        } else {
+          c.facing = Math.atan2(target.y - c.y, target.x - c.x);
+          if (now - c.lastShotAt > COMPANION_SHOOT_INTERVAL) {
+            c.lastShotAt = now;
+            target.hp -= COMPANION_SHOOT_DAMAGE;
+            target.hitFlashUntil = now + 200;
+            if (target.hp <= 0) {
+              if (targetKind === "zombie") { zombies = zombies.filter((z) => z !== target); toast("    ! "); }
+              else { hostiles = hostiles.filter((h) => h !== target); toast("    ! "); }
+            }
           }
         }
       } else {
-        const dx = followX - c.x, dy = followY - c.y;
-        const d = Math.hypot(dx, dy);
+        const d = Math.hypot(followX - c.x, followY - c.y);
         if (d > 10) {
-          c.facing = Math.atan2(dy, dx);
           c.walkPhase += dt * 0.25;
-          moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
+          moveTowardSmart(c, followX, followY, COMPANION_SPEED, dt, isSolidForZombie);
         }
       }
     }
@@ -414,39 +426,29 @@ function updateCompanions(dt) {
           c.collectState = "movingToResource";
           c.targetResource = best;
         } else {
-          const dx = followX - c.x, dy = followY - c.y;
-          const d = Math.hypot(dx, dy);
+          const d = Math.hypot(followX - c.x, followY - c.y);
           if (d > 10) {
-            c.facing = Math.atan2(dy, dx);
             c.walkPhase += dt * 0.2;
-            moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
+            moveTowardSmart(c, followX, followY, COMPANION_SPEED, dt, isSolidForZombie);
           }
         }
       } else if (c.collectState === "movingToResource" && c.targetResource) {
-        const dx = c.targetResource.wx - c.x, dy = c.targetResource.wy - c.y;
-        const d = Math.hypot(dx, dy);
+        const d = moveTowardSmart(c, c.targetResource.wx, c.targetResource.wy, COMPANION_SPEED, dt, isSolidForZombie);
+        c.walkPhase += dt * 0.3;
         if (d < 20) {
           const def = RESOURCE_NODES[c.targetResource.res];
           const amt = def.amount[0] + Math.floor(Math.random() * (def.amount[1] - def.amount[0] + 1));
           state.inventory[def.gives] = (state.inventory[def.gives] || 0) + amt;
           state.modifications[modKey(c.targetResource.tx, c.targetResource.ty)] = { harvested: true };
-          toast(`همراهت +${amt} ${ITEM_FA[def.gives]} پیدا کرد! 🤝`);
+          toast(` +${amt} ${ITEM_FA[def.gives]}  ! `);
           c.targetResource = null;
           c.collectState = "returningToPlayer";
-        } else {
-          c.facing = Math.atan2(dy, dx);
-          c.walkPhase += dt * 0.3;
-          moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
         }
       } else if (c.collectState === "returningToPlayer") {
-        const dx = state.player.x - c.x, dy = state.player.y - c.y;
-        const d = Math.hypot(dx, dy);
+        const d = moveTowardSmart(c, state.player.x, state.player.y, COMPANION_SPEED, dt, isSolidForZombie);
+        c.walkPhase += dt * 0.25;
         if (d < COMPANION_DELIVER_DISTANCE + 20) {
           c.collectState = "idle";
-        } else {
-          c.facing = Math.atan2(dy, dx);
-          c.walkPhase += dt * 0.25;
-          moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
         }
       }
     }
@@ -460,43 +462,32 @@ function updateCompanions(dt) {
         } else if (c.forageState === "wandering") {
           if (Math.random() < 0.02) c.forageState = "idle";
         } else if (c.forageState === "movingToFood" && c.targetFood) {
-          const dx = c.targetFood.wx - c.x, dy = c.targetFood.wy - c.y;
-          const d = Math.hypot(dx, dy);
+          const d = moveTowardSmart(c, c.targetFood.wx, c.targetFood.wy, COMPANION_SPEED, dt, isSolidForZombie);
+          c.walkPhase += dt * 0.3;
           if (d < 20) {
             state.modifications[modKey(c.targetFood.tx, c.targetFood.ty)] = { harvested: true };
             c.hp = Math.min(c.maxHp, c.hp + 45);
             c.targetFood = null;
-            if (c.hp >= c.maxHp) { c.forageState = "returning"; toast("یکی از همراه‌ها سیر شد و داره برمی‌گرده 🍖"); }
+            if (c.hp >= c.maxHp) { c.forageState = "returning"; toast("        "); }
             else { c.forageState = "idle"; }
-          } else {
-            c.facing = Math.atan2(dy, dx);
-            c.walkPhase += dt * 0.3;
-            moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
           }
         } else if (c.forageState === "returning") {
-          const dx = followX - c.x, dy = followY - c.y;
-          const d = Math.hypot(dx, dy);
+          const d = moveTowardSmart(c, followX, followY, COMPANION_SPEED, dt, isSolidForZombie);
+          c.walkPhase += dt * 0.25;
           if (d < 15) { c.forageState = "idle"; }
-          else {
-            c.facing = Math.atan2(dy, dx);
-            c.walkPhase += dt * 0.25;
-            moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
-          }
         }
       } else {
-        const dx = followX - c.x, dy = followY - c.y;
-        const d = Math.hypot(dx, dy);
+        const d = Math.hypot(followX - c.x, followY - c.y);
         if (d > 12) {
-          c.facing = Math.atan2(dy, dx);
           c.walkPhase += dt * 0.2;
-          moveWithCollision(c, (dx / d) * COMPANION_SPEED * dt, (dy / d) * COMPANION_SPEED * dt, isSolidForZombie);
+          moveTowardSmart(c, followX, followY, COMPANION_SPEED, dt, isSolidForZombie);
         }
       }
     }
   });
 
   companions = companions.filter((c) => {
-    if (c.hp <= 0) { toast("یکی از همراه‌هات مُرد 💀"); return false; }
+    if (c.hp <= 0) { toast("    "); return false; }
     return true;
   });
 }
