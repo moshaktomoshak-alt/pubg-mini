@@ -95,7 +95,7 @@ function drawWantIcon(x, y, type) {
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
-  ctx.fillText("×" + RECRUIT_WANT_AMOUNT, x, y + 15);
+  ctx.fillText("" + RECRUIT_WANT_AMOUNT, x, y + 15);
 }
 
 // ====================   ====================
@@ -222,6 +222,7 @@ function damageHostile(h, dmg) {
   h.hp -= dmg;
   h.hitFlashUntil = performance.now() + 200;
   if (h.hp <= 0) {
+    if (typeof spawnCorpse === "function") spawnCorpse(h, "human");
     hostiles = hostiles.filter((x) => x !== h);
     if (h.isHouse && state.houseNpcs && state.houseNpcs[h.houseKey]) state.houseNpcs[h.houseKey].dead = true;
     const got = [];
@@ -232,7 +233,7 @@ function damageHostile(h, dmg) {
         got.push(`+${amt} ${ITEM_FA[loot.item]}`);
       }
     }
-    toast("   " + (got.length ? " — " + got.join(" ") : ""));
+    toast("   " + (got.length ? "  " + got.join(" ") : ""));
   }
 }
 
