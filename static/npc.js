@@ -95,7 +95,7 @@ function drawWantIcon(x, y, type) {
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
-  ctx.fillText("" + RECRUIT_WANT_AMOUNT, x, y + 15);
+  ctx.fillText("�" + RECRUIT_WANT_AMOUNT, x, y + 15);
 }
 
 // ====================   ====================
@@ -233,7 +233,7 @@ function damageHostile(h, dmg) {
         got.push(`+${amt} ${ITEM_FA[loot.item]}`);
       }
     }
-    toast("   " + (got.length ? "  " + got.join(" ") : ""));
+    toast("   " + (got.length ? " � " + got.join(" ") : ""));
   }
 }
 
