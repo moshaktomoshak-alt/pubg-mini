@@ -74,6 +74,8 @@ const RECIPES = {
 
     { id: "tower", name: "برج دیده‌بانی", need: { metal: 12, wood: 6 }, give: { tower: 1 }, info: "خودکار به زامبی/دشمن‌های نزدیک شلیک می‌کنه" },
 
+    { id: "campfire", name: "کمپ‌فایر", need: { wood: 5, stone: 3 }, give: { campfire: 1 }, info: "بعد از ساختن، نزدیکش برو و «تعامل» بزن تا گوشت خام رو بپزی (گوشت پخته گرسنگی رو بیشتر پر می‌کنه)" },
+
   ],
 
 };
@@ -100,7 +102,7 @@ const RESOURCE_NODES = {
 
 };
 
-const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5", trap: "#5a4a2a", efence: "#2a3a3f", tower: "#4a4a55" };
+const BUILDABLE = { wall: "#7a5230", floor: "#c9ab7a", door: "#4b3620", window: "#bcdff5", trap: "#5a4a2a", efence: "#2a3a3f", tower: "#4a4a55", campfire: "#5a3a20" };
 
 const SOLID_FOR_ZOMBIE = { wall: true, door: true, window: true, efence: true, tower: true };
 
@@ -110,10 +112,12 @@ const ITEM_FA = {
 
   wood: "چوب", stone: "سنگ", metal: "فلز", cloth: "پارچه", food: "غذا", water: "آب", corn: "ذرت", meat: "گوشت",
 
+  cooked_meat: "گوشت پخته",
+
   knife: "چاقو", wrench: "آچار", bandage: "باند زخم",
 
   wall: "دیوار", floor: "کف", door: "در", window: "پنجره",
-  trap: "تله", efence: "حصار برقی", tower: "برج دیده‌بانی",
+  trap: "تله", efence: "حصار برقی", tower: "برج دیده‌بانی", campfire: "کمپ‌فایر",
 
   engine_part: "قطعه موتور", fuel_can: "قوطی بنزین",
 
@@ -200,6 +204,7 @@ const HELP_TEXT_HTML = `
 <div class="help-item">🛠️ <b>ساخت:</b> تو پنل ساخت، برد و دمیج هر سلاح نوشته شده؛ قوطی بنزین هم از ذرت ساخته می‌شه</div>
 
 <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
+<div class="help-item">🔥 <b>کمپ‌فایر:</b> تو «ساخت بنا» بسازش و جاگذاری کن؛ بعد نزدیکش برو و «تعامل» بزن تا گوشت خام رو بپزی — گوشت پخته گرسنگی رو بیشتر از گوشت خام پر می‌کنه</div>
 
 <div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه. ۴ نوع داره: عادی، دونده (سریع)، چاق (کند ولی HP و دمیج بالا)، جیغ‌زن (وقتی می‌بینتت بقیه‌ی زامبی‌های اطراف رو هم خبر می‌کنه)</div>
 <div class="help-item">🐄 <b>گاو:</b> بی‌آزاره و از نزدیک شدنت فرار می‌کنه؛ بزنش تا بمیره و گوشت بده — گوشت هم مثل غذا گشنگی رو کم می‌کنه</div>
@@ -554,18 +559,6 @@ function pickVariant(list, tx, ty, seed) {
   const idx = Math.floor(hash2(tx + 5.13, ty + 9.77, seed) * list.length);
 
   return list[Math.min(idx, list.length - 1)];
-
-}
-
-const CAMPFIRE_DECOR_DENSITY = 0.004; // خیلی کمیاب، فقط برای تزئین محیط
-
-function hasCampfireDecor(tx, ty, seed) {
-
-  if (isHouseTile(tx, ty)) return false;
-
-  const h = hash2(tx + 41.3, ty - 17.9, seed);
-
-  return h < CAMPFIRE_DECOR_DENSITY;
 
 }
 
@@ -1484,7 +1477,7 @@ function openPanel(kind, carKey) {
 
         row.appendChild(b);
 
-      } else if (k === "wall" || k === "floor" || k === "door" || k === "window") {
+      } else if (k === "wall" || k === "floor" || k === "door" || k === "window" || k === "campfire") {
 
         const b = document.createElement("button");
 
@@ -1504,7 +1497,7 @@ function openPanel(kind, carKey) {
 
         row.appendChild(b);
 
-      } else if (k === "food" || k === "water" || k === "meat") {
+      } else if (k === "food" || k === "water" || k === "meat" || k === "cooked_meat") {
 
         const b = document.createElement("button");
 
@@ -1872,11 +1865,13 @@ function consumeItem(k) {
 
   if (k === "food" || k === "meat") state.player.hunger = Math.min(100, state.player.hunger + 30);
 
+  if (k === "cooked_meat") state.player.hunger = Math.min(100, state.player.hunger + 50);
+
   if (k === "water") state.player.thirst = Math.min(100, state.player.thirst + 30);
 
   panelFeedback(ITEM_FA[k] + " مصرف شد ✅");
 
-  toast((k === "water" ? "آب نوشیدی" : k === "meat" ? "گوشت خوردی" : "غذا خوردی") + " 🙂");
+  toast((k === "water" ? "آب نوشیدی" : k === "meat" ? "گوشت خوردی" : k === "cooked_meat" ? "گوشت پخته خوردی، سیر شدی" : "غذا خوردی") + " 🙂");
 
 }
 
@@ -2140,6 +2135,64 @@ function tryFeedDog() {
 
 }
 
+// ==================== کمپ‌فایر (آیتم قابل‌ساخت، پخت گوشت خام) ====================
+
+function nearestCampfire() {
+
+  const px = state.player.x, py = state.player.y;
+
+  const ctx0 = Math.floor(px / TILE), cty0 = Math.floor(py / TILE);
+
+  let best = null, bestDist = INTERACT_RANGE;
+
+  for (let dx = -2; dx <= 2; dx++) {
+
+    for (let dy = -2; dy <= 2; dy++) {
+
+      const tx = ctx0 + dx, ty = cty0 + dy;
+
+      const mod = state.modifications[modKey(tx, ty)];
+
+      if (!mod || mod.build !== "campfire") continue;
+
+      const wx = tx * TILE, wy = ty * TILE;
+
+      const d = Math.hypot(wx - px, wy - py);
+
+      if (d < bestDist) { bestDist = d; best = { tx, ty, wx, wy }; }
+
+    }
+
+  }
+
+  return best;
+
+}
+
+function tryCookAtCampfire() {
+
+  const fire = nearestCampfire();
+
+  if (!fire) return false;
+
+  if ((state.inventory.meat || 0) <= 0) {
+
+    toast("گوشت خامی نداری که بپزی 🍖");
+
+    return true;
+
+  }
+
+  state.inventory.meat -= 1;
+
+  state.inventory.cooked_meat = (state.inventory.cooked_meat || 0) + 1;
+
+  toast("گوشت رو پختی! 🔥 حالا گرسنگی رو بیشتر پر می‌کنه");
+
+  return true;
+
+}
+
 function doInteract() {
 
   if (!state || isDead || isPanelOpen) return;
@@ -2151,6 +2204,8 @@ function doInteract() {
   if (typeof tryTalkToTrader === "function" && tryTalkToTrader()) return;
 
   if (typeof tryRecruit === "function" && tryRecruit()) return;
+
+  if (tryCookAtCampfire()) return;
 
   const car = nearestCar();
 
@@ -2690,6 +2745,20 @@ function drawWorld() {
 
           }
 
+        } else if (mod.build === "campfire") {
+
+          if (imgReady(IMG.campfire)) {
+
+            drawImageCentered(IMG.campfire, s.x, s.y, 26);
+
+          } else {
+
+            ctx.fillStyle = BUILDABLE.campfire;
+
+            ctx.beginPath(); ctx.arc(s.x, s.y, TILE * 0.3, 0, Math.PI * 2); ctx.fill();
+
+          }
+
         } else {
 
           ctx.fillStyle = BUILDABLE[mod.build];
@@ -2773,10 +2842,6 @@ function drawWorld() {
           ctx.fill();
 
         }
-
-      } else if (hasCampfireDecor(tx, ty, state.worldSeed)) {
-
-        drawImageCentered(IMG.campfire, s.x, s.y, 22);
 
       }
 
