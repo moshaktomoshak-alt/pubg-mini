@@ -153,21 +153,35 @@ const ZOMBIE_SPAWN_EVERY = 7000;
 
 const ZOMBIE_BASE_HP = 60;
 
-// ==================== تنوع زامبی (از همون دو تا اسپرایت zombie1/zombie2 با تینت رنگی و اسکیل فرق) ====================
+// ==================== تنوع زامبی (آرت واقعی مود ABOVE THE DEATH — هر نوع اسپرایت واقعی خودشو داره) ====================
 
 const ZOMBIE_TYPES = {
 
-  normal:   { hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1,    tint: null },
+  normal:   { imgKey: "zombie_normal",  hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1 },
 
-  runner:   { hpMult: 0.65, speedMult: 1.9,  dmgMult: 0.85, sizeMult: 0.95, sightMult: 1.15, tint: "sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.9)" },
+  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2 },
 
-  fat:      { hpMult: 2.6,  speedMult: 0.55, dmgMult: 1.8,  sizeMult: 1.35, sightMult: 0.8,  tint: "sepia(1) saturate(1.6) hue-rotate(50deg) brightness(0.75)" },
+  jumper:   { imgKey: "zombie_jumper",  hpMult: 0.75, speedMult: 1.6,  dmgMult: 0.9,  sizeMult: 1,     sightMult: 1.15 },
 
-  screamer: { hpMult: 0.8,  speedMult: 1.05, dmgMult: 1,    sizeMult: 1,    sightMult: 1.3,  tint: "sepia(1) saturate(4) hue-rotate(230deg) brightness(1.05)" },
+  hazmat:   { imgKey: "zombie_hazmat",  hpMult: 2.2,  speedMult: 0.6,  dmgMult: 1.5,  sizeMult: 1.15,  sightMult: 0.85 },
+
+  spitter:  { imgKey: "zombie_spitter", hpMult: 0.8,  speedMult: 0.95, dmgMult: 1,    sizeMult: 1,     sightMult: 1.3 },
+
+  raptor:   { imgKey: "zombie_raptor",  hpMult: 0.9,  speedMult: 1.5,  dmgMult: 1.1,  sizeMult: 1,     sightMult: 1.2 },
+
+  bomber:   { imgKey: "zombie_bomber",  hpMult: 0.5,  speedMult: 1.1,  dmgMult: 2,    sizeMult: 1,     sightMult: 1 },
+
+  tanker:   { imgKey: "zombie_tanker",  hpMult: 6,    speedMult: 0.45, dmgMult: 2.5,  sizeMult: 1.8,   sightMult: 0.9 },
 
 };
 
-const ZOMBIE_TYPE_WEIGHTS = [["normal", 0.55], ["runner", 0.2], ["fat", 0.15], ["screamer", 0.1]];
+const ZOMBIE_TYPE_WEIGHTS = [
+
+  ["normal", 0.32], ["clawler", 0.14], ["jumper", 0.13], ["hazmat", 0.1],
+
+  ["spitter", 0.1], ["raptor", 0.12], ["bomber", 0.07], ["tanker", 0.02],
+
+];
 
 const ZOMBIE_SCREAM_RADIUS = 260;
 
@@ -206,7 +220,7 @@ const HELP_TEXT_HTML = `
 <div class="help-item">🏠 <b>بنا:</b> دیوار جلوی همه رو می‌گیره؛ در و پنجره فقط جلوی زامبی رو می‌گیرن</div>
 <div class="help-item">🔥 <b>کمپ‌فایر:</b> تو «ساخت بنا» بسازش و جاگذاری کن؛ بعد نزدیکش برو و «تعامل» بزن تا گوشت خام رو بپزی — گوشت پخته گرسنگی رو بیشتر از گوشت خام پر می‌کنه</div>
 
-<div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه. ۴ نوع داره: عادی، دونده (سریع)، چاق (کند ولی HP و دمیج بالا)، جیغ‌زن (وقتی می‌بینتت بقیه‌ی زامبی‌های اطراف رو هم خبر می‌کنه)</div>
+<div class="help-item">🧟 <b>زامبی:</b> فقط وقتی نزدیکش بشی متوجه‌ات می‌شه و دنبالت می‌کنه. ۸ نوع داره: عادی، کلاولر (سریع و ضعیف)، جامپر (سریع)، هازمت (کند ولی HP و دمیج بالا)، اسپیتر (وقتی می‌بینتت بقیه‌ی زامبی‌های اطراف رو خبر می‌کنه)، رپتور (سریع و تهاجمی)، بمبر (دمیج خیلی بالا)، و تنکر (باس کمیاب، HP و دمیج خیلی بالا)</div>
 <div class="help-item">🐄 <b>گاو:</b> بی‌آزاره و از نزدیک شدنت فرار می‌کنه؛ بزنش تا بمیره و گوشت بده — گوشت هم مثل غذا گشنگی رو کم می‌کنه</div>
 <div class="help-item">🔫 <b>بازمانده‌ی خصمانه:</b> از دور بهت شلیک می‌کنه، بزنش تا بمیره و لوت میده</div>
 <div class="help-item">🛒 <b>معامله‌گر:</b> نزدیکش برو و «تعامل» بزن تا پنل معامله باز شه</div>
@@ -224,7 +238,11 @@ const HELP_TEXT_HTML = `
 
 const IMG_SRC = {
 
-  zombie1: "zombie1_walk.png", zombie2: "zombie2_walk.png",
+  zombie_normal: "zombie_normal.png", zombie_new: "zombie_new.png", zombie_clawler: "zombie_clawler.png",
+
+  zombie_jumper: "zombie_jumper.png", zombie_hazmat: "zombie_hazmat.png", zombie_spitter: "zombie_spitter.png",
+
+  zombie_raptor: "zombie_raptor.png", zombie_bomber: "zombie_bomber.png", zombie_tanker: "zombie_tanker.png",
 
   p_unarmed_idle: "p_unarmed_idle.png", p_unarmed_walk: "p_unarmed_walk.png",
 
@@ -306,9 +324,23 @@ function drawImageRotated(im, x, y, targetH, angle) {
 
 const ZOMBIE_SHEETS = {
 
-  zombie1: { frames: 8, w: 66, h: 72 },
+  zombie_normal: { frames: 7, w: 88, h: 72 },
 
-  zombie2: { frames: 8, w: 51, h: 72 },
+  zombie_new: { frames: 7, w: 88, h: 72 },
+
+  zombie_clawler: { frames: 7, w: 174, h: 159 },
+
+  zombie_jumper: { frames: 7, w: 88, h: 124 },
+
+  zombie_hazmat: { frames: 7, w: 88, h: 72 },
+
+  zombie_spitter: { frames: 7, w: 88, h: 72 },
+
+  zombie_raptor: { frames: 7, w: 88, h: 96 },
+
+  zombie_bomber: { frames: 7, w: 88, h: 128 },
+
+  zombie_tanker: { frames: 1, w: 88, h: 112 },
 
 };
 
@@ -2401,8 +2433,6 @@ function spawnZombie() {
 
     walkPhase: Math.random() * 10,
 
-    type: Math.random() < 0.5 ? "zombie1" : "zombie2",
-
     kind,
 
   });
@@ -2457,7 +2487,7 @@ function updateZombies(dt) {
 
         z.alertPulseUntil = now + 700;
 
-        if (z.kind === "screamer") screamAlertNearby(z, now);
+        if (z.kind === "spitter") screamAlertNearby(z, now);
 
       }
 
@@ -2907,15 +2937,11 @@ function drawZombies() {
 
     const by = s.y;
 
-    const sheet = ZOMBIE_SHEETS[z.type] || ZOMBIE_SHEETS.zombie1;
+    const sheet = ZOMBIE_SHEETS[def.imgKey];
 
-    const frameIdx = z.alerted ? Math.floor(z.walkPhase * 2) % sheet.frames : 0;
+    const frameIdx = Math.floor(z.walkPhase * (z.alerted ? 6 : 2.5)) % sheet.frames;
 
-    if (def.tint) ctx.filter = def.tint;
-
-    const drawn = drawSpriteFrameRotated(IMG[z.type || "zombie1"], sheet, frameIdx, s.x, by, 34 * def.sizeMult, (z.facing || 0) + Math.PI / 2);
-
-    ctx.filter = "none";
+    const drawn = drawSpriteFrameRotated(IMG[def.imgKey], sheet, frameIdx, s.x, by, 34 * def.sizeMult, (z.facing || 0) + Math.PI / 2);
 
     if (!drawn) {
 
@@ -2929,7 +2955,7 @@ function drawZombies() {
 
     if (now < z.alertPulseUntil) {
 
-      if (z.kind === "screamer" && typeof drawScreamIcon === "function") drawScreamIcon(s.x, by - 22 * def.sizeMult);
+      if (z.kind === "spitter" && typeof drawScreamIcon === "function") drawScreamIcon(s.x, by - 22 * def.sizeMult);
 
       else if (typeof drawAlertIcon === "function") drawAlertIcon(s.x, by - 20 * def.sizeMult);
 
