@@ -157,21 +157,21 @@ const ZOMBIE_BASE_HP = 60;
 
 const ZOMBIE_TYPES = {
 
-  normal:   { imgKey: "zombie_normal",  hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1 },
+  normal:   { imgKey: "zombie_normal",  hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1,    visualH: 24 },
 
-  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2 },
+  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2,  visualH: 22 },
 
-  jumper:   { imgKey: "zombie_jumper",  hpMult: 0.75, speedMult: 1.6,  dmgMult: 0.9,  sizeMult: 1,     sightMult: 1.15 },
+  jumper:   { imgKey: "zombie_jumper",  hpMult: 0.75, speedMult: 1.6,  dmgMult: 0.9,  sizeMult: 1,     sightMult: 1.15, visualH: 34 },
 
-  hazmat:   { imgKey: "zombie_hazmat",  hpMult: 2.2,  speedMult: 0.6,  dmgMult: 1.5,  sizeMult: 1.15,  sightMult: 0.85 },
+  hazmat:   { imgKey: "zombie_hazmat",  hpMult: 2.2,  speedMult: 0.6,  dmgMult: 1.5,  sizeMult: 1.15,  sightMult: 0.85, visualH: 26 },
 
-  spitter:  { imgKey: "zombie_spitter", hpMult: 0.8,  speedMult: 0.95, dmgMult: 1,    sizeMult: 1,     sightMult: 1.3 },
+  spitter:  { imgKey: "zombie_spitter", hpMult: 0.8,  speedMult: 0.95, dmgMult: 1,    sizeMult: 1,     sightMult: 1.3,  visualH: 24 },
 
-  raptor:   { imgKey: "zombie_raptor",  hpMult: 0.9,  speedMult: 1.5,  dmgMult: 1.1,  sizeMult: 1,     sightMult: 1.2 },
+  raptor:   { imgKey: "zombie_raptor",  hpMult: 0.9,  speedMult: 1.5,  dmgMult: 1.1,  sizeMult: 1,     sightMult: 1.2,  visualH: 24 },
 
-  bomber:   { imgKey: "zombie_bomber",  hpMult: 0.5,  speedMult: 1.1,  dmgMult: 2,    sizeMult: 1,     sightMult: 1 },
+  bomber:   { imgKey: "zombie_bomber",  hpMult: 0.5,  speedMult: 1.1,  dmgMult: 2,    sizeMult: 1,     sightMult: 1,    visualH: 26 },
 
-  tanker:   { imgKey: "zombie_tanker",  hpMult: 6,    speedMult: 0.45, dmgMult: 2.5,  sizeMult: 1.8,   sightMult: 0.9 },
+  tanker:   { imgKey: "zombie_tanker",  hpMult: 6,    speedMult: 0.45, dmgMult: 2.5,  sizeMult: 1.8,   sightMult: 0.9,  visualH: 34 },
 
 };
 
@@ -2939,9 +2939,9 @@ function drawZombies() {
 
     const sheet = ZOMBIE_SHEETS[def.imgKey];
 
-    const frameIdx = Math.floor(z.walkPhase * (z.alerted ? 6 : 2.5)) % sheet.frames;
+    const frameIdx = Math.floor(z.walkPhase * (z.alerted ? 2.2 : 1)) % sheet.frames;
 
-    const drawn = drawSpriteFrameRotated(IMG[def.imgKey], sheet, frameIdx, s.x, by, 34 * def.sizeMult, (z.facing || 0) + Math.PI / 2);
+    const drawn = drawSpriteFrameRotated(IMG[def.imgKey], sheet, frameIdx, s.x, by, def.visualH * def.sizeMult, (z.facing || 0) + Math.PI / 2);
 
     if (!drawn) {
 
