@@ -1,5 +1,24 @@
-// ====================       (   PNG) ====================
+// ==================== انسان تاپ‌داون (آرت واقعی مود، رنگ فرق‌می‌کنه بر اساس نقش) ====================
+
+const NPC_WALK_SHEET = { frames: 5, w: 72, h: 72 };
+
+const NPC_TINTS = {
+  "#8a2b2b": "hue-rotate(200deg) saturate(1.9) brightness(0.9)",
+  "#2b5f8a": "hue-rotate(60deg) saturate(1.4) brightness(1.05)",
+  "#b89b2b": "hue-rotate(-45deg) saturate(1.3) brightness(1.1)",
+};
+
 function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun) {
+  const im = (typeof IMG !== "undefined") ? IMG.npc_walk : null;
+
+  if (im && im.complete && im.naturalWidth > 0 && typeof drawSpriteFrameRotated === "function") {
+    const frameIdx = Math.floor(walkPhase * 0.8) % NPC_WALK_SHEET.frames;
+    ctx.filter = NPC_TINTS[bodyColor] || "none";
+    drawSpriteFrameRotated(im, NPC_WALK_SHEET, frameIdx, x, y, 26, facing + Math.PI / 2);
+    ctx.filter = "none";
+    return;
+  }
+
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(facing);
@@ -7,7 +26,6 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   const size = 13;
   const armSwing = Math.sin(walkPhase) * 3;
 
-  // 
   ctx.strokeStyle = bodyColor;
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -17,19 +35,16 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
   ctx.lineTo(size * 0.25, size * 0.5 + armSwing * 0.3);
   ctx.stroke();
 
-  // 
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, size * 0.85, size * 0.65, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  //  (  )
   ctx.fillStyle = headColor;
   ctx.beginPath();
   ctx.arc(size * 0.7, 0, size * 0.4, 0, Math.PI * 2);
   ctx.fill();
 
-  // 
   if (hasGun) {
     ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 2.5;
@@ -39,6 +54,22 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
     ctx.stroke();
   }
 
+  ctx.restore();
+}
+
+function drawSniperNpc(x, y, facing) {
+  const im = (typeof IMG !== "undefined") ? IMG.npc_sniper : null;
+  if (im && im.complete && im.naturalWidth > 0 && typeof drawImageCentered === "function") {
+    ctx.filter = "hue-rotate(200deg) saturate(1.6) brightness(0.85)";
+    drawImageCentered(im, x, y, 30);
+    ctx.filter = "none";
+    return;
+  }
+  ctx.save();
+  ctx.fillStyle = "#5c1f1f";
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -95,7 +126,7 @@ function drawWantIcon(x, y, type) {
   ctx.fillStyle = "#fff";
   ctx.font = "10px Tahoma";
   ctx.textAlign = "center";
-  ctx.fillText("�" + RECRUIT_WANT_AMOUNT, x, y + 15);
+  ctx.fillText("�" + RECRUIT_WANT_AMOUNT, x, y + 15);
 }
 
 // ====================   ====================
@@ -109,6 +140,12 @@ const HOSTILE_SHOOT_RANGE = 220;
 const HOSTILE_LOSE_INTEREST = 480;
 const HOSTILE_SHOOT_INTERVAL = 1400;
 const HOSTILE_SHOOT_DAMAGE = 8;
+
+// اسنایپر: نوع جدید دشمن — جامش رو ترک نمی‌کنه، ولی از خیلی دورتر و با دمیج بیشتر (ولی کندتر) شلیک می‌کنه
+const HOSTILE_SNIPER_CHANCE = 0.25;
+const HOSTILE_SNIPER_RANGE = 420;
+const HOSTILE_SNIPER_DAMAGE = 22;
+const HOSTILE_SNIPER_INTERVAL = 2600;
 const HOSTILE_LOOT_TABLE = [
   { item: "meat", min: 1, max: 3 },
   { item: "bandage", min: 0, max: 1 },
@@ -135,6 +172,7 @@ function spawnHostile() {
     hitFlashUntil: 0,
     shootFlashUntil: 0,
     lastShotAt: 0,
+    role: Math.random() < HOSTILE_SNIPER_CHANCE ? "sniper" : "grunt",
   });
 }
 
@@ -154,6 +192,39 @@ function updateHostiles(dt) {
     }
     if (h.alerted) {
       const hasLos = hasLineOfSight(h.x, h.y, nearest.x, nearest.y);
+
+      if (h.role === "sniper") {
+        if (d > HOSTILE_SNIPER_RANGE || !hasLos) {
+          // اسنایپر جاش رو ترک نمی‌کنه، فقط منتظر می‌مونه
+        } else if (now - h.lastShotAt > HOSTILE_SNIPER_INTERVAL) {
+          h.facing = Math.atan2(dy, dx);
+          h.lastShotAt = now;
+          h.shootFlashUntil = now + 150;
+          h.shootTargetX = nearest.x; h.shootTargetY = nearest.y;
+          if (nearest.kind === "player") {
+            if (inCar) {
+              const car = getCarState(drivingCarKey || "main");
+              car.health = Math.max(0, car.health - HOSTILE_SNIPER_DAMAGE);
+              if (car.health <= 0) { car.repaired = false; exitCar(); toast("ماشینت داغون شد! 💥"); }
+            } else {
+              state.player.health = Math.max(0, state.player.health - HOSTILE_SNIPER_DAMAGE);
+              playerHitFlashUntil = now + 200;
+              toast("یه اسنایپر بهت شلیک کرد! 🎯");
+            }
+          } else if (nearest.kind === "dog") {
+            nearest.ref.hp -= HOSTILE_SNIPER_DAMAGE;
+            nearest.ref.hitFlashUntil = now + 200;
+            if (nearest.ref.hp <= 0) { nearest.ref.hp = 0; nearest.ref.isDowned = true; toast("سگت زخمی شد! باید کمکش کنی 🐕"); }
+          } else if (nearest.kind === "companion") {
+            nearest.ref.hp -= HOSTILE_SNIPER_DAMAGE;
+            nearest.ref.hitFlashUntil = now + 200;
+          }
+        } else {
+          h.facing = Math.atan2(dy, dx);
+        }
+        continue;
+      }
+
       if (d > HOSTILE_SHOOT_RANGE || !hasLos) {
         h.walkPhase += dt * 0.25;
         moveTowardSmart(h, nearest.x, nearest.y, HOSTILE_SPEED, dt, isSolidForZombie);
@@ -195,7 +266,11 @@ function drawHostiles() {
   const now = performance.now();
   for (const h of hostiles) {
     const s = worldToScreen(h.x, h.y);
-    drawHumanTopDown(s.x, s.y, h.facing, h.walkPhase, "#8a2b2b", "#d9b38c", true);
+    if (h.role === "sniper") {
+      drawSniperNpc(s.x, s.y, h.facing);
+    } else {
+      drawHumanTopDown(s.x, s.y, h.facing, h.walkPhase, "#8a2b2b", "#d9b38c", true);
+    }
     if (now < h.hitFlashUntil) drawHitFlash(s.x, s.y, 16);
     if (now < h.shootFlashUntil) {
       const tx = h.shootTargetX != null ? h.shootTargetX : state.player.x;
@@ -233,7 +308,7 @@ function damageHostile(h, dmg) {
         got.push(`+${amt} ${ITEM_FA[loot.item]}`);
       }
     }
-    toast("   " + (got.length ? " � " + got.join(" ") : ""));
+    toast("   " + (got.length ? " � " + got.join(" ") : ""));
   }
 }
 

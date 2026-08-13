@@ -244,6 +244,8 @@ const IMG_SRC = {
 
   zombie_raptor: "zombie_raptor.png", zombie_bomber: "zombie_bomber.png", zombie_tanker: "zombie_tanker.png",
 
+  npc_walk: "npc_walk.png", npc_sniper: "npc_sniper.png",
+
   p_unarmed_idle: "p_unarmed_idle.png", p_unarmed_walk: "p_unarmed_walk.png",
 
   p_knife_idle: "p_knife_idle.png", p_knife_walk: "p_knife_walk.png", p_knife_attack: "p_knife_attack.png",
@@ -2939,7 +2941,7 @@ function drawZombies() {
 
     const sheet = ZOMBIE_SHEETS[def.imgKey];
 
-    const frameIdx = Math.floor(z.walkPhase * (z.alerted ? 2.2 : 1)) % sheet.frames;
+    const frameIdx = Math.floor(z.walkPhase * (z.alerted ? 1.7 : 0.8)) % sheet.frames;
 
     const drawn = drawSpriteFrameRotated(IMG[def.imgKey], sheet, frameIdx, s.x, by, def.visualH * def.sizeMult, (z.facing || 0) + Math.PI / 2);
 
