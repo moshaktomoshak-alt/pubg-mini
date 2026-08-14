@@ -8,7 +8,7 @@ const NPC_TINTS = {
   "#b89b2b": "hue-rotate(-45deg) saturate(1.3) brightness(1.1)",
 };
 
-function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun) {
+function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun, weaponKey) {
   const im = (typeof IMG !== "undefined") ? IMG.npc_walk : null;
 
   if (im && im.complete && im.naturalWidth > 0 && typeof drawSpriteFrameRotated === "function") {
@@ -16,6 +16,7 @@ function drawHumanTopDown(x, y, facing, walkPhase, bodyColor, headColor, hasGun)
     ctx.filter = NPC_TINTS[bodyColor] || "none";
     drawSpriteFrameRotated(im, NPC_WALK_SHEET, frameIdx, x, y, 26, facing + Math.PI / 2);
     ctx.filter = "none";
+    if (hasGun && weaponKey) drawNpcWeapon(x, y, facing, weaponKey);
     return;
   }
 
@@ -63,6 +64,7 @@ function drawSniperNpc(x, y, facing) {
     ctx.filter = "hue-rotate(200deg) saturate(1.6) brightness(0.85)";
     drawImageCentered(im, x, y, 30);
     ctx.filter = "none";
+    drawNpcWeapon(x, y, facing, "npc_rifle");
     return;
   }
   ctx.save();
@@ -70,6 +72,22 @@ function drawSniperNpc(x, y, facing) {
   ctx.beginPath();
   ctx.arc(x, y, 12, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+// اسلحه‌ی هر یونیت — هر نقش سلاح مخصوص خودشو داره (رایفل/شات‌گان/تپانچه)
+function drawNpcWeapon(x, y, facing, weaponKey) {
+  const im = (typeof IMG !== "undefined") ? IMG[weaponKey] : null;
+  if (!im || !im.complete || im.naturalWidth <= 0) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(facing + Math.PI / 2);
+  ctx.translate(10, 3);
+  ctx.rotate(-Math.PI / 2);
+  const targetLen = weaponKey === "npc_pistol" ? 9 : 16;
+  const scale = targetLen / im.naturalHeight;
+  const w = im.naturalWidth * scale, h = im.naturalHeight * scale;
+  ctx.drawImage(im, -w / 2, -h * 0.85, w, h);
   ctx.restore();
 }
 
@@ -269,7 +287,7 @@ function drawHostiles() {
     if (h.role === "sniper") {
       drawSniperNpc(s.x, s.y, h.facing);
     } else {
-      drawHumanTopDown(s.x, s.y, h.facing, h.walkPhase, "#8a2b2b", "#d9b38c", true);
+      drawHumanTopDown(s.x, s.y, h.facing, h.walkPhase, "#8a2b2b", "#d9b38c", true, "npc_rifle");
     }
     if (now < h.hitFlashUntil) drawHitFlash(s.x, s.y, 16);
     if (now < h.shootFlashUntil) {
@@ -405,7 +423,7 @@ function updateRecruits(dt) {
 function drawRecruits() {
   for (const r of recruits) {
     const s = worldToScreen(r.x, r.y);
-    drawHumanTopDown(s.x, s.y, r.facing, r.walkPhase, "#b89b2b", "#d9b38c", false);
+    drawHumanTopDown(s.x, s.y, r.facing, r.walkPhase, "#b89b2b", "#d9b38c", true, "npc_pistol");
     drawWantIcon(s.x, s.y - 18, r.wantType);
   }
 }
@@ -621,7 +639,7 @@ function drawCompanions() {
   const now = performance.now();
   for (const c of companions) {
     const s = worldToScreen(c.x, c.y);
-    drawHumanTopDown(s.x, s.y, c.facing, c.walkPhase, "#b89b2b", "#d9b38c", true);
+    drawHumanTopDown(s.x, s.y, c.facing, c.walkPhase, "#b89b2b", "#d9b38c", true, "npc_shotgun");
     if (now < c.hitFlashUntil) drawHitFlash(s.x, s.y, 16);
     ctx.fillStyle = "#000";
     ctx.fillRect(s.x - 14, s.y - 24, 28, 4);

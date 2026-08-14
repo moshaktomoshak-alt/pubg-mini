@@ -40,7 +40,9 @@ function spawnCorpse(entity, kind) {
   const now = performance.now();
 
   const variants = kind === "zombie" ? ZOMBIE_CORPSE_VARIANTS : HUMAN_CORPSE_VARIANTS;
-  const variantKey = variants[Math.floor(Math.random() * variants.length)];
+  const variantKey = (kind === "zombie" && entity.kind === "hazmat" && CORPSE_IMG_SRC.zombiecorpsehazmat)
+    ? "zombiecorpsehazmat"
+    : variants[Math.floor(Math.random() * variants.length)];
 
   const corpse = {
     x: entity.x,
@@ -93,7 +95,7 @@ function drawBloodPool(x, y, scale, alpha) {
   if (corpseImgReady(im)) {
     ctx.save();
     ctx.globalAlpha = alpha * 0.85;
-    const targetW = 34 * scale;
+    const targetW = 46 * scale;
     const s = targetW / im.naturalWidth;
     const w = im.naturalWidth * s, h = im.naturalHeight * s;
     ctx.drawImage(im, x - w / 2, y - h / 2, w, h);
@@ -130,7 +132,7 @@ function drawCorpses() {
       ctx.translate(s.x, s.y);
       ctx.rotate(c.facing + c.layAngleOffset);
       if (c.flip) ctx.scale(1, -1);
-      const targetH = c.kind === "zombie" ? 26 : 24;
+      const targetH = c.kind === "zombie" ? 38 : 34;
       const scale = targetH / im.naturalHeight;
       const w = im.naturalWidth * scale, h = im.naturalHeight * scale;
       ctx.drawImage(im, -w / 2, -h / 2, w, h);

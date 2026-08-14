@@ -246,6 +246,8 @@ const IMG_SRC = {
 
   npc_walk: "npc_walk.png", npc_sniper: "npc_sniper.png",
 
+  npc_pistol: "npc_pistol.png", npc_rifle: "npc_rifle.png", npc_shotgun: "npc_shotgun.png",
+
   p_unarmed_idle: "p_unarmed_idle.png", p_unarmed_walk: "p_unarmed_walk.png",
 
   p_knife_idle: "p_knife_idle.png", p_knife_walk: "p_knife_walk.png", p_knife_attack: "p_knife_attack.png",
