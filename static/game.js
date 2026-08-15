@@ -82,7 +82,17 @@ const RECIPES = {
 
 const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
 
-const CAR_COLORS = ["engine_blue", "engine_yellow", "engine_green", "engine_black", "engine_orange"];
+const CAR_TYPES = ["car_police", "car_swat"];
+
+const CAR_SHEETS = {
+
+  car_police: { key: "car_police", frames: 12, w: 47, h: 119, label: "🚓 ماشین پلیس" },
+
+  car_swat: { key: "car_swat", frames: 12, w: 57, h: 161, label: "🛡️ خودروی زرهی سوات" },
+
+};
+
+function carLightFrame() { return Math.floor(performance.now() / 80); }
 
 const RESOURCE_NODES = {
 
@@ -266,11 +276,7 @@ const IMG_SRC = {
 
   bush1: "bush1.png", bush2: "bush2.png", berrybush1: "berrybush1.png", berrybush2: "berrybush2.png", campfire: "campfire.png",
 
-  engine_blue: "engine_blue.png", engine_yellow: "engine_yellow.png", engine_green: "engine_green.png",
-
-  engine_black: "engine_black.png", engine_orange: "engine_orange.png",
-
-};
+  car_police: "car_police.png", car_swat: "car_swat.png",};
 
 const IMG = {};
 
@@ -766,15 +772,15 @@ function sectorCarInfo(sx, sy) {
 
   const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
 
-  const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
+  const typeIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_TYPES.length);
 
-  return { key: "s_" + sx + "_" + sy, x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox, y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy, color: CAR_COLORS[colorIdx] };
+  return { key: "s_" + sx + "_" + sy, x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox, y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy, type: CAR_TYPES[typeIdx] };
 
 }
 
 function carInfoFromKey(key) {
 
-  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" };
+  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, type: "car_police" };
 
   const m = key.match(/^s_(-?\d+)_(-?\d+)$/);
 
@@ -997,7 +1003,7 @@ function getAllNearbyCars() {
 
   const map = new Map();
 
-  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" }];
+  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, type: "car_police" }];
 
   const psx = Math.floor(state.player.x / CAR_SECTOR_SIZE);
 
@@ -1689,7 +1695,11 @@ function renderCarPanel(title, content, carKey) {
 
   const car = getCarState(currentCarKey);
 
-  title.textContent = "🚗 ماشین";
+  const carInfo = carInfoFromKey(currentCarKey);
+
+  const sheet = CAR_SHEETS[(carInfo && carInfo.type) || "car_police"];
+
+  title.textContent = sheet.label || "🚗 ماشین";
 
   if (!car.repaired) {
 
@@ -2899,7 +2909,9 @@ function drawCars() {
 
     const cs = getCarState(c.key);
 
-    const carImg = IMG[c.color] || IMG.engine_orange;
+    const sheet = CAR_SHEETS[c.type] || CAR_SHEETS.car_police;
+
+    const carImg = IMG[sheet.key] || IMG[CAR_SHEETS.car_police.key];
 
     if (imgReady(carImg)) {
 
@@ -2907,7 +2919,7 @@ function drawCars() {
 
       else if (cs.health < 50) ctx.filter = "sepia(0.35) hue-rotate(-25deg)";
 
-      drawImageCentered(carImg, s.x, s.y, 50);
+      drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, s.y, 60, 0);
 
       ctx.filter = "none";
 
@@ -3109,11 +3121,13 @@ function drawPlayer() {
 
     const drivingCar = getCarState(drivingCarKey || "main");
 
-    const carColor = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main"));
+    const carInfo = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main")) || carInfoFromKey(drivingCarKey || "main");
 
-    const carImg = IMG[(carColor && carColor.color) || "engine_orange"];
+    const sheet = CAR_SHEETS[(carInfo && carInfo.type) || "car_police"];
 
-    const drawn = drawImageRotated(carImg, s.x, by, 46, playerFacing + Math.PI / 2);
+    const carImg = IMG[sheet.key] || IMG[CAR_SHEETS.car_police.key];
+
+    const drawn = drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, by, 56, playerFacing + Math.PI / 2);
 
     if (!drawn) {
 
@@ -3122,10 +3136,6 @@ function drawPlayer() {
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
 
     }
-
-    const idleSheet = currentPlayerSheets().idle || PLAYER_SHEETS.unarmed.idle;
-
-    drawSpriteFrameRotated(IMG[idleSheet.key], idleSheet, 0, s.x, by, 36, playerFacing + Math.PI / 2);
 
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
 
