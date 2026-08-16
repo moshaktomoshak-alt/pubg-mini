@@ -104,6 +104,7 @@ function drawDogTopDown(x, y, facing, walkPhase, isDowned) {
 // ==================== آپدیت سگ ====================
 function updateDog(dt) {
   if (!dog || dog.isDowned) return;
+  if (typeof inCar !== "undefined" && inCar) return; // سگ سوار ماشین نمی‌شه، همون‌جا می‌مونه تا پیاده بشی
 
   const now = performance.now();
   const dx = state.player.x - dog.x;

@@ -169,7 +169,7 @@ const ZOMBIE_TYPES = {
 
   normal:   { imgKey: "zombie_normal",  hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1,    visualH: 24 },
 
-  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2,  visualH: 22 },
+  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2,  visualH: 30 },
 
   jumper:   { imgKey: "zombie_jumper",  hpMult: 0.75, speedMult: 1.6,  dmgMult: 0.9,  sizeMult: 1,     sightMult: 1.15, visualH: 34 },
 
@@ -350,7 +350,7 @@ const ZOMBIE_SHEETS = {
 
   zombie_bomber: { frames: 7, w: 88, h: 128 },
 
-  zombie_tanker: { frames: 1, w: 88, h: 112 },
+  zombie_tanker: { frames: 4, w: 63, h: 97 },
 
 };
 
@@ -2599,7 +2599,7 @@ function updatePlayer(dt) {
 
     if (inCar) {
 
-      p.x += dx; p.y += dy;
+      moveWithCollision(p, dx, dy, isSolidForPlayer);
 
       const car = getCarState(drivingCarKey || "main");
 
@@ -2919,7 +2919,7 @@ function drawCars() {
 
       else if (cs.health < 50) ctx.filter = "sepia(0.35) hue-rotate(-25deg)";
 
-      drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, s.y, 60, 0);
+      drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, s.y, 80, 0);
 
       ctx.filter = "none";
 
@@ -3127,7 +3127,7 @@ function drawPlayer() {
 
     const carImg = IMG[sheet.key] || IMG[CAR_SHEETS.car_police.key];
 
-    const drawn = drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, by, 56, playerFacing + Math.PI / 2);
+    const drawn = drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, by, 76, playerFacing + Math.PI / 2);
 
     if (!drawn) {
 
