@@ -82,17 +82,7 @@ const RECIPES = {
 
 const CAR_ENGINE_NEED = { metal: 3, stone: 2 };
 
-const CAR_TYPES = ["car_police", "car_swat"];
-
-const CAR_SHEETS = {
-
-  car_police: { key: "car_police", frames: 12, w: 47, h: 119, label: "🚓 ماشین پلیس" },
-
-  car_swat: { key: "car_swat", frames: 12, w: 57, h: 161, label: "🛡️ خودروی زرهی سوات" },
-
-};
-
-function carLightFrame() { return Math.floor(performance.now() / 80); }
+const CAR_COLORS = ["engine_blue", "engine_yellow", "engine_green", "engine_black", "engine_orange"];
 
 const RESOURCE_NODES = {
 
@@ -169,7 +159,7 @@ const ZOMBIE_TYPES = {
 
   normal:   { imgKey: "zombie_normal",  hpMult: 1,    speedMult: 1,    dmgMult: 1,    sizeMult: 1,    sightMult: 1,    visualH: 24 },
 
-  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2,  visualH: 30 },
+  clawler:  { imgKey: "zombie_clawler", hpMult: 0.6,  speedMult: 1.8,  dmgMult: 0.8,  sizeMult: 1,     sightMult: 1.2,  visualH: 22 },
 
   jumper:   { imgKey: "zombie_jumper",  hpMult: 0.75, speedMult: 1.6,  dmgMult: 0.9,  sizeMult: 1,     sightMult: 1.15, visualH: 34 },
 
@@ -201,15 +191,17 @@ const CAR_SECTOR_SIZE = 640;
 
 const CAR_SECTOR_CHANCE = 0.35;
 
-const HOUSE_SECTOR_SIZE = 750;
+const HOUSE_SECTOR_SIZE = 520;
 
-const HOUSE_SECTOR_CHANCE = 0.4;
+const HOUSE_SECTOR_CHANCE = 0.6;
 
 const HOUSE_NPC_OFFSET_Y = 55;
 
 const HOUSE_ROOM_HALF_W = 3;
 
 const HOUSE_ROOM_HALF_H = 2;
+
+const HOUSE_SKINS = ["building_apartment", "building_restaurant"];
 
 const HELP_TEXT_HTML = `
 
@@ -258,6 +250,8 @@ const IMG_SRC = {
 
   npc_pistol: "npc_pistol.png", npc_rifle: "npc_rifle.png", npc_shotgun: "npc_shotgun.png",
 
+  building_apartment: "building_apartment.png", building_restaurant: "building_restaurant.png",
+
   p_unarmed_idle: "p_unarmed_idle.png", p_unarmed_walk: "p_unarmed_walk.png",
 
   p_knife_idle: "p_knife_idle.png", p_knife_walk: "p_knife_walk.png", p_knife_attack: "p_knife_attack.png",
@@ -276,7 +270,11 @@ const IMG_SRC = {
 
   bush1: "bush1.png", bush2: "bush2.png", berrybush1: "berrybush1.png", berrybush2: "berrybush2.png", campfire: "campfire.png",
 
-  car_police: "car_police.png", car_swat: "car_swat.png",};
+  engine_blue: "engine_blue.png", engine_yellow: "engine_yellow.png", engine_green: "engine_green.png",
+
+  engine_black: "engine_black.png", engine_orange: "engine_orange.png",
+
+};
 
 const IMG = {};
 
@@ -291,6 +289,70 @@ for (const [key, src] of Object.entries(IMG_SRC)) {
 }
 
 function imgReady(im) { return im && im.complete && im.naturalWidth > 0; }
+
+// ==================== سیستم صدا (آرت صوتی واقعی مود + صدای ماشین) ====================
+
+const SOUND_SRC = {
+
+  car_siren: "car_siren.ogg",
+
+  zombie_tanker_taunt: "png/sound/taunt.ogg",
+
+  hostile_gatling: "png/sound/gatling.ogg",
+
+  hostile_launch: "png/sound/launch.ogg",
+
+};
+
+const SOUND = {};
+
+for (const [key, src] of Object.entries(SOUND_SRC)) {
+
+  try {
+
+    const a = new Audio(src);
+
+    a.preload = "auto";
+
+    SOUND[key] = a;
+
+  } catch (e) { /* اگه پلتفرم صدا رو ساپورت نکرد، بازی نباید کرش کنه */ }
+
+}
+
+let soundEnabled = true;
+
+function playSound(key, opts) {
+
+  if (!soundEnabled) return null;
+
+  const base = SOUND[key];
+
+  if (!base) return null;
+
+  try {
+
+    const node = base.cloneNode(true);
+
+    node.volume = (opts && opts.volume != null) ? opts.volume : 0.6;
+
+    node.loop = !!(opts && opts.loop);
+
+    node.play().catch(() => {});
+
+    return node;
+
+  } catch (e) { return null; }
+
+}
+
+function stopSound(node) {
+
+  if (!node) return;
+
+  try { node.pause(); node.currentTime = 0; } catch (e) {}
+
+}
 
 function drawImageCentered(im, x, y, targetH) {
 
@@ -350,7 +412,7 @@ const ZOMBIE_SHEETS = {
 
   zombie_bomber: { frames: 7, w: 88, h: 128 },
 
-  zombie_tanker: { frames: 4, w: 63, h: 97 },
+  zombie_tanker: { frames: 1, w: 88, h: 112 },
 
 };
 
@@ -521,6 +583,8 @@ let inCar = false;
 let currentCarKey = null;
 
 let drivingCarKey = null;
+
+let activeCarSiren = null;
 
 let isDead = false;
 
@@ -772,15 +836,15 @@ function sectorCarInfo(sx, sy) {
 
   const oy = (hash2(sx + 0.33, sy + 0.44, state.worldSeed + 77) - 0.5) * (CAR_SECTOR_SIZE * 0.6);
 
-  const typeIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_TYPES.length);
+  const colorIdx = Math.floor(hash2(sx + 0.77, sy + 0.88, state.worldSeed + 99) * CAR_COLORS.length);
 
-  return { key: "s_" + sx + "_" + sy, x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox, y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy, type: CAR_TYPES[typeIdx] };
+  return { key: "s_" + sx + "_" + sy, x: sx * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + ox, y: sy * CAR_SECTOR_SIZE + CAR_SECTOR_SIZE / 2 + oy, color: CAR_COLORS[colorIdx] };
 
 }
 
 function carInfoFromKey(key) {
 
-  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, type: "car_police" };
+  if (key === "main") return { key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" };
 
   const m = key.match(/^s_(-?\d+)_(-?\d+)$/);
 
@@ -804,7 +868,9 @@ function sectorHouseInfo(sx, sy) {
 
   const y = sy * HOUSE_SECTOR_SIZE + HOUSE_SECTOR_SIZE / 2 + oy;
 
-  return { key: "h_" + sx + "_" + sy, x, y, npcX: x, npcY: y + HOUSE_NPC_OFFSET_Y };
+  const skin = HOUSE_SKINS[Math.floor(hash2(sx + 5.5, sy + 8.8, state.worldSeed + 909) * HOUSE_SKINS.length) % HOUSE_SKINS.length];
+
+  return { key: "h_" + sx + "_" + sy, x, y, npcX: x, npcY: y + HOUSE_NPC_OFFSET_Y, skin };
 
 }
 
@@ -879,6 +945,40 @@ function houseTileType(tx, ty) {
   if (dy === HOUSE_ROOM_HALF_H && dx === 0) return { house: h.info, kind: "door" };
 
   return { house: h.info, kind: "wall" };
+
+}
+
+const ROAD_RING_WIDTH = 2;
+
+function roadNearTile(tx, ty) {
+
+  const wx = tx * TILE, wy = ty * TILE;
+
+  const sx = Math.floor(wx / HOUSE_SECTOR_SIZE), sy = Math.floor(wy / HOUSE_SECTOR_SIZE);
+
+  for (let ddx = -1; ddx <= 1; ddx++) {
+
+    for (let ddy = -1; ddy <= 1; ddy++) {
+
+      const info = sectorHouseInfo(sx + ddx, sy + ddy);
+
+      if (!info) continue;
+
+      const htx = Math.round(info.x / TILE), hty = Math.round(info.y / TILE);
+
+      const adx = Math.abs(tx - htx), ady = Math.abs(ty - hty);
+
+      const inRing = adx <= HOUSE_ROOM_HALF_W + ROAD_RING_WIDTH && ady <= HOUSE_ROOM_HALF_H + ROAD_RING_WIDTH;
+
+      const inHouse = adx <= HOUSE_ROOM_HALF_W && ady <= HOUSE_ROOM_HALF_H;
+
+      if (inRing && !inHouse) return true;
+
+    }
+
+  }
+
+  return false;
 
 }
 
@@ -979,6 +1079,26 @@ function drawHouses() {
 
   for (const h of getNearbyHouses()) {
 
+    if (h.skin && IMG[h.skin] && imgReady(IMG[h.skin])) {
+
+      const im = IMG[h.skin];
+
+      const footprintW = (HOUSE_ROOM_HALF_W * 2 + 1) * TILE;
+
+      const scale = footprintW / im.naturalWidth;
+
+      const w = im.naturalWidth * scale, h2 = im.naturalHeight * scale;
+
+      const baseS = worldToScreen(h.x, h.y + HOUSE_ROOM_HALF_H * TILE);
+
+      if (baseS.x > -w && baseS.x < canvas.width + w && baseS.y > -h2 * 2 && baseS.y < canvas.height + h2) {
+
+        ctx.drawImage(im, baseS.x - w / 2, baseS.y - h2, w, h2);
+
+      }
+
+    }
+
     const st = getHouseNpcState(h);
 
     if (st.type !== "trader") continue;
@@ -1003,7 +1123,7 @@ function getAllNearbyCars() {
 
   const map = new Map();
 
-  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, type: "car_police" }];
+  const base = [{ key: "main", x: CAR_WORLD_X, y: CAR_WORLD_Y, color: "engine_orange" }];
 
   const psx = Math.floor(state.player.x / CAR_SECTOR_SIZE);
 
@@ -1210,6 +1330,10 @@ async function onDeath() {
   inCar = false;
 
   drivingCarKey = null;
+
+  stopSound(activeCarSiren);
+
+  activeCarSiren = null;
 
   dog = null;
 
@@ -1695,11 +1819,7 @@ function renderCarPanel(title, content, carKey) {
 
   const car = getCarState(currentCarKey);
 
-  const carInfo = carInfoFromKey(currentCarKey);
-
-  const sheet = CAR_SHEETS[(carInfo && carInfo.type) || "car_police"];
-
-  title.textContent = sheet.label || "🚗 ماشین";
+  title.textContent = "🚗 ماشین";
 
   if (!car.repaired) {
 
@@ -1849,7 +1969,7 @@ function renderCarPanel(title, content, carKey) {
 
     rb.disabled = car.fuel <= 0;
 
-    rb.onclick = () => { inCar = true; drivingCarKey = currentCarKey; panelFeedback("سوار شدی 🚗"); closePanel(); };
+    rb.onclick = () => { inCar = true; drivingCarKey = currentCarKey; activeCarSiren = playSound("car_siren", { loop: true, volume: 0.35 }); panelFeedback("سوار شدی 🚗"); closePanel(); };
 
   }
 
@@ -1874,6 +1994,10 @@ function exitCar() {
   inCar = false;
 
   drivingCarKey = null;
+
+  stopSound(activeCarSiren);
+
+  activeCarSiren = null;
 
 }
 
@@ -2503,6 +2627,8 @@ function updateZombies(dt) {
 
         if (z.kind === "spitter") screamAlertNearby(z, now);
 
+        if (z.kind === "tanker") playSound("zombie_tanker_taunt", { volume: 0.7 });
+
       }
 
     } else if (d > ZOMBIE_LOSE_INTEREST) {
@@ -2599,7 +2725,7 @@ function updatePlayer(dt) {
 
     if (inCar) {
 
-      moveWithCollision(p, dx, dy, isSolidForPlayer);
+      p.x += dx; p.y += dy;
 
       const car = getCarState(drivingCarKey || "main");
 
@@ -2819,17 +2945,23 @@ function drawWorld() {
 
       if (houseTile) {
 
+        const hasSkin = houseTile.house && houseTile.house.skin;
+
         if (houseTile.kind === "wall") {
 
-          ctx.fillStyle = "#6b5a4a";
+          if (!hasSkin) {
 
-          ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
+            ctx.fillStyle = "#6b5a4a";
 
-          ctx.strokeStyle = "#4a3d30";
+            ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
 
-          ctx.lineWidth = 1;
+            ctx.strokeStyle = "#4a3d30";
 
-          ctx.strokeRect(s.x - TILE / 2 + 1, s.y - TILE / 2 + 1, TILE - 2, TILE - 2);
+            ctx.lineWidth = 1;
+
+            ctx.strokeRect(s.x - TILE / 2 + 1, s.y - TILE / 2 + 1, TILE - 2, TILE - 2);
+
+          }
 
         } else if (houseTile.kind === "door") {
 
@@ -2848,6 +2980,22 @@ function drawWorld() {
           ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
 
         }
+
+        continue;
+
+      }
+
+      if (roadNearTile(tx, ty)) {
+
+        ctx.fillStyle = "#5f5f5f";
+
+        ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, TILE);
+
+        ctx.fillStyle = "#787878";
+
+        ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, TILE, 2);
+
+        ctx.fillRect(s.x - TILE / 2, s.y - TILE / 2, 2, TILE);
 
         continue;
 
@@ -2909,9 +3057,7 @@ function drawCars() {
 
     const cs = getCarState(c.key);
 
-    const sheet = CAR_SHEETS[c.type] || CAR_SHEETS.car_police;
-
-    const carImg = IMG[sheet.key] || IMG[CAR_SHEETS.car_police.key];
+    const carImg = IMG[c.color] || IMG.engine_orange;
 
     if (imgReady(carImg)) {
 
@@ -2919,7 +3065,7 @@ function drawCars() {
 
       else if (cs.health < 50) ctx.filter = "sepia(0.35) hue-rotate(-25deg)";
 
-      drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, s.y, 80, 0);
+      drawImageCentered(carImg, s.x, s.y, 50);
 
       ctx.filter = "none";
 
@@ -3121,13 +3267,11 @@ function drawPlayer() {
 
     const drivingCar = getCarState(drivingCarKey || "main");
 
-    const carInfo = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main")) || carInfoFromKey(drivingCarKey || "main");
+    const carColor = getAllNearbyCars().find((c) => c.key === (drivingCarKey || "main"));
 
-    const sheet = CAR_SHEETS[(carInfo && carInfo.type) || "car_police"];
+    const carImg = IMG[(carColor && carColor.color) || "engine_orange"];
 
-    const carImg = IMG[sheet.key] || IMG[CAR_SHEETS.car_police.key];
-
-    const drawn = drawSpriteFrameRotated(carImg, sheet, carLightFrame(), s.x, by, 76, playerFacing + Math.PI / 2);
+    const drawn = drawImageRotated(carImg, s.x, by, 46, playerFacing + Math.PI / 2);
 
     if (!drawn) {
 
@@ -3136,6 +3280,10 @@ function drawPlayer() {
       ctx.beginPath(); ctx.arc(s.x, by, 16, 0, Math.PI * 2); ctx.fill();
 
     }
+
+    const idleSheet = currentPlayerSheets().idle || PLAYER_SHEETS.unarmed.idle;
+
+    drawSpriteFrameRotated(IMG[idleSheet.key], idleSheet, 0, s.x, by, 36, playerFacing + Math.PI / 2);
 
     ctx.fillStyle = "#fff"; ctx.font = "10px Tahoma"; ctx.textAlign = "center";
 
